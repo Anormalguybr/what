@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import { AlertTriangle, Camera, Check, ExternalLink, Recycle, RotateCcw, ScanLine, Search, ShieldCheck, Upload } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -104,40 +105,40 @@ export default function App() {
     <main className="app-shell">
       <header className="topbar">
         <a className="brand" href="/" aria-label="EcoScan AI home">
-          <span className="brand-mark" aria-hidden="true">E</span>
+          <span className="brand-mark" aria-hidden="true"><Recycle size={18} strokeWidth={2.5} /></span>
           <span>EcoScan AI</span>
         </a>
-        <span className="status-chip">Learning prototype</span>
+        <span className="status-chip"><span className="status-dot" aria-hidden="true" /> Browser-ready prototype</span>
       </header>
 
       <section className="hero" aria-labelledby="page-title">
         <div className="hero-copy">
-          <p className="eyebrow">Scan. Sort. Learn.</p>
-          <h1 id="page-title">Make every item count.</h1>
+          <p className="eyebrow">Field guide / 01</p>
+          <h1 id="page-title">Sort with evidence.</h1>
           <p className="hero-text">
-            Use a photo to explore how an item may be sorted under Macau guidance. EcoScan AI explains the decision in clear English so students can learn while they sort.
+            Point to a waste item. Get a cautious category, a reason, and the next cleaning move. Built for Macau classrooms, with uncertainty shown clearly.
           </p>
-          <p className="privacy-note">Images are processed for this scan and are not intentionally stored. Do not upload personal or sensitive images.</p>
+          <p className="privacy-note"><ShieldCheck size={17} aria-hidden="true" /> Images are processed for this scan and are not intentionally stored. Do not upload personal or sensitive images.</p>
         </div>
 
         <div className="scanner-panel" aria-label="Image scanner">
           <div className="panel-heading">
             <div>
-              <p className="panel-kicker">Step 1</p>
+              <p className="panel-kicker">Scan module / 01</p>
               <h2>Choose an item</h2>
             </div>
-            <span className="panel-count">1 / 3</span>
+            <span className="panel-count">Input 01 / 03</span>
           </div>
 
           <div className="capture-actions">
             <button className="action-button action-primary" type="button" onClick={() => cameraInputRef.current?.click()}>
-              Take a photo
+              <Camera size={18} aria-hidden="true" /> Take a photo
             </button>
             <button className="action-button action-secondary" type="button" onClick={() => uploadInputRef.current?.click()}>
-              Upload image
+              <Upload size={18} aria-hidden="true" /> Upload image
             </button>
-            <input ref={cameraInputRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => selectFile(event.target.files?.[0])} />
-            <input ref={uploadInputRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0])} />
+            <input ref={cameraInputRef} className="visually-hidden" tabIndex={-1} aria-label="Take a photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => selectFile(event.target.files?.[0])} />
+            <input ref={uploadInputRef} className="visually-hidden" tabIndex={-1} aria-label="Upload image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0])} />
           </div>
 
           {previewUrl ? (
@@ -145,9 +146,9 @@ export default function App() {
               <img className="preview-image" src={previewUrl} alt="Selected item preview" />
               <button className="text-button" type="button" onClick={resetScan}>Choose another image</button>
             </div>
-          ) : (
+            ) : (
             <div className="empty-preview">
-              <span className="empty-icon" aria-hidden="true">+</span>
+              <span className="empty-icon" aria-hidden="true"><ScanLine size={24} /></span>
               <p>Your image preview will appear here.</p>
               <span>JPEG, PNG, or WebP · up to 10 MB</span>
             </div>
@@ -156,9 +157,9 @@ export default function App() {
           {error && <div className="alert" role="alert">{error}</div>}
 
           <button className="scan-button" type="button" disabled={!file || isLoading} onClick={analyzeImage}>
-            {isLoading ? "Analyzing image..." : "Analyze image"}
+            <Search size={18} aria-hidden="true" /> {isLoading ? "Analyzing image..." : "Analyze image"}
           </button>
-          <p className="source-hint">AI output is a learning aid. Check current local guidance for final disposal decisions.</p>
+          <p className="source-hint"><AlertTriangle size={15} aria-hidden="true" /> AI output is a learning aid. Check current local guidance for final disposal decisions.</p>
         </div>
       </section>
 
@@ -166,10 +167,10 @@ export default function App() {
         <section className="results-section" aria-labelledby="result-title">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Step 2</p>
+              <p className="eyebrow">Decision trace / 02</p>
               <h2 id="result-title">What EcoScan found</h2>
             </div>
-            <button className="text-button" type="button" onClick={resetScan}>Start a new scan</button>
+            <button className="text-button" type="button" onClick={resetScan}><RotateCcw size={16} aria-hidden="true" /> Start a new scan</button>
           </div>
 
           <div className="result-grid">
@@ -192,22 +193,22 @@ export default function App() {
             </article>
 
             <article className="result-card">
-              <div className="result-label">Why this category?</div>
+              <div className="result-label">Decision trace</div>
               <p className="result-copy">{result.reason || "No explanation was returned."}</p>
-              <div className="result-label">Cleaning steps</div>
+              <div className="result-label">Cleaning protocol</div>
               {result.cleaningSteps.length ? (
                 <ol className="steps-list">{result.cleaningSteps.map((step) => <li key={step}>{step}</li>)}</ol>
               ) : <p className="muted-copy">No cleaning steps were returned.</p>}
             </article>
 
             <article className="result-card learning-card">
-              <div className="result-label">Learn something new</div>
+              <div className="result-label">Learning signal</div>
               <p className="result-copy">{result.learningFact || "The AI did not return a learning fact."}</p>
               {result.safetyNote && <p className="safety-note"><strong>Safety:</strong> {result.safetyNote}</p>}
               {result.sources?.length > 0 && (
                 <div className="sources-block">
                   <div className="result-label">Sources</div>
-                  {result.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.name}</a>)}
+                  {result.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.name} <ExternalLink size={13} aria-hidden="true" /></a>)}
                 </div>
               )}
             </article>
@@ -230,7 +231,7 @@ function Quiz({ quiz, choice, submitted, onChoice, onSubmit }) {
   return (
     <article className="quiz-card" aria-labelledby="quiz-title">
       <div>
-        <p className="eyebrow">Step 3</p>
+        <p className="eyebrow">Knowledge check / 03</p>
         <h2 id="quiz-title">Quick check</h2>
         <p className="quiz-question">{quiz.question}</p>
       </div>
@@ -243,10 +244,10 @@ function Quiz({ quiz, choice, submitted, onChoice, onSubmit }) {
         ))}
       </div>
       {!submitted ? (
-        <button className="quiz-submit" type="button" disabled={choice === null} onClick={onSubmit}>Check answer</button>
+        <button className="quiz-submit" type="button" disabled={choice === null} onClick={onSubmit}><Check size={17} aria-hidden="true" /> Check answer</button>
       ) : (
         <div className={`quiz-feedback ${isCorrect ? "correct" : "incorrect"}`} role="status">
-          <strong>{isCorrect ? "Correct." : "Keep learning."}</strong> {quiz.explanation}
+          {isCorrect ? <Check size={16} aria-hidden="true" /> : <AlertTriangle size={16} aria-hidden="true" />} <strong>{isCorrect ? "Correct." : "Keep learning."}</strong> {quiz.explanation}
         </div>
       )}
     </article>

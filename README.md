@@ -31,6 +31,28 @@ npm --prefix client run dev
 
 Open <http://localhost:5173>. Camera capture requires HTTPS in a deployed environment; local development can use the upload control.
 
+### Windows PowerShell
+
+The web app runs on Windows 10 or 11 with Node.js 18 or newer. In PowerShell, the equivalent setup is:
+
+```powershell
+Copy-Item .env.example server/.env
+Push-Location server; npm install; Pop-Location
+Push-Location client; npm install; Pop-Location
+```
+
+Open two PowerShell windows and run one command in each:
+
+```powershell
+Push-Location server; npm run dev
+```
+
+```powershell
+Push-Location client; npm run dev
+```
+
+Use Chrome or Microsoft Edge for camera and file upload. Windows browsers can always use the upload control; camera capture may require HTTPS and a granted browser camera permission when deployed.
+
 ## Environment variables
 
 Copy `.env.example` to `server/.env` or load the variables in the server process. `DEEPSEEK_API_KEY` must never be exposed to the client or committed to Git.
