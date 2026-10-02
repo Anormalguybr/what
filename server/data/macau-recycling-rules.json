@@ -1,0 +1,52 @@
+{
+  "sourceNote": "Starter guidance for prototyping. Verify each item against current official Macau collection guidance before public release.",
+  "sources": [
+    {
+      "name": "Macao SAR Government Environmental Protection Bureau (DSPA)",
+      "url": "https://www.dspa.gov.mo/"
+    }
+  ],
+  "rules": [
+    {
+      "category": "plastic",
+      "label": "Plastic packaging",
+      "examples": ["plastic bottle", "plastic container", "plastic packaging"],
+      "recyclable": true,
+      "localGuidance": "Only treat clean, empty plastic packaging as recyclable when it matches the current local collection guidance.",
+      "sourceNeeded": true
+    },
+    {
+      "category": "paper",
+      "label": "Paper and cardboard",
+      "examples": ["cardboard box", "paper carton", "clean paper"],
+      "recyclable": true,
+      "localGuidance": "Keep paper and cardboard dry and remove non-paper parts when required by the current local collection guidance.",
+      "sourceNeeded": true
+    },
+    {
+      "category": "metal",
+      "label": "Metal packaging",
+      "examples": ["aluminium can", "steel can", "metal container"],
+      "recyclable": true,
+      "localGuidance": "Empty and rinse metal packaging before following the current local collection guidance.",
+      "sourceNeeded": true
+    },
+    {
+      "category": "glass",
+      "label": "Glass packaging",
+      "examples": ["glass bottle", "glass jar"],
+      "recyclable": true,
+      "localGuidance": "Handle glass carefully and follow the current local collection guidance for glass packaging.",
+      "sourceNeeded": true
+    },
+    {
+      "category": "general_waste",
+      "label": "General waste",
+      "examples": ["food-soiled packaging", "mixed material item"],
+      "recyclable": false,
+      "localGuidance": "If the item cannot be matched to a local recyclable stream, do not place it in a recycling container.",
+      "sourceNeeded": true
+    }
+  ]
+}
+
