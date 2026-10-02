@@ -9,7 +9,7 @@ const CATEGORIES = new Set([
   "unknown"
 ]);
 
-export function validateClassification(value) {
+export function validateClassification(value, allowedSources = []) {
   if (!value || typeof value !== "object") {
     throw new Error("The AI response is not an object.");
   }
@@ -21,6 +21,7 @@ export function validateClassification(value) {
   const sources = Array.isArray(value.sources)
     ? value.sources
         .filter((source) => source && typeof source.name === "string" && typeof source.url === "string")
+        .filter((source) => isAllowedSource(source, allowedSources))
         .slice(0, 4)
     : [];
 
@@ -37,16 +38,21 @@ export function validateClassification(value) {
   return {
     itemName: value.itemName.trim().slice(0, 120),
     category: value.category,
-    recyclable: typeof value.recyclable === "boolean" ? value.recyclable : null,
+    recyclable: value.category === "unknown" ? null : typeof value.recyclable === "boolean" ? value.recyclable : null,
     confidence,
     reason: typeof value.reason === "string" ? value.reason.trim().slice(0, 600) : "",
     cleaningSteps,
     learningFact: typeof value.learningFact === "string" ? value.learningFact.trim().slice(0, 400) : "",
     safetyNote: typeof value.safetyNote === "string" ? value.safetyNote.trim().slice(0, 400) : "",
-    sourceNeeded: value.sourceNeeded !== false,
+    sourceNeeded: sources.length === 0 || value.sourceNeeded !== false,
     sources,
     quiz: normalizeQuiz(value.quiz)
   };
+}
+
+function isAllowedSource(source, allowedSources) {
+  if (!allowedSources.length) return true;
+  return allowedSources.some((allowed) => allowed && allowed.url === source.url);
 }
 
 function normalizeQuiz(quiz) {
@@ -58,6 +64,7 @@ function normalizeQuiz(quiz) {
   const answerIndex = Number(quiz.answerIndex);
   if (
     typeof quiz.question !== "string" ||
+    !quiz.question.trim() ||
     options.length < 2 ||
     !Number.isInteger(answerIndex) ||
     answerIndex < 0 ||
@@ -73,4 +80,3 @@ function normalizeQuiz(quiz) {
     explanation: typeof quiz.explanation === "string" ? quiz.explanation.trim().slice(0, 300) : ""
   };
 }
-

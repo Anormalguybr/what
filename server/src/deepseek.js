@@ -8,6 +8,18 @@ export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, base
     throw error;
   }
 
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules });
+    } catch (error) {
+      if (error.code !== "AI_EMPTY_RESPONSE" || attempt === 1) {
+        throw error;
+      }
+    }
+  }
+}
+
+async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);
   const dataUrl = `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
@@ -53,7 +65,7 @@ export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, base
       throw error;
     }
 
-    return validateClassification(JSON.parse(content));
+    return validateClassification(JSON.parse(content), rules?.sources || []);
   } catch (error) {
     if (error.name === "AbortError") {
       const timeoutError = new Error("The AI request timed out.");
@@ -70,4 +82,3 @@ export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, base
     clearTimeout(timeout);
   }
 }
-

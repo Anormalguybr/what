@@ -74,7 +74,7 @@ npm --prefix client run lint
 npm --prefix client run build
 ```
 
-The current test suite covers request validation and the unconfigured-key path. A live AI test requires a real server-side key and an approved anonymous test image; no live result is claimed until that test is run.
+The current test suite covers request validation, image signatures, response normalization, source filtering, retry behavior, and the unconfigured-key path. A live AI test requires a real server-side key and an approved anonymous test image; no live result is claimed until that test is run.
 
 ## Privacy and limitations
 

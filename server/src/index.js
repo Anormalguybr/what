@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 import multer from "multer";
 import { classifyWithDeepSeek } from "./deepseek.js";
+import { isSupportedImageBuffer } from "./image-validation.js";
 
 const rulesData = JSON.parse(readFileSync(new URL("../data/macau-recycling-rules.json", import.meta.url), "utf8"));
 
@@ -36,6 +37,13 @@ app.post("/api/classify", upload.single("image"), async (request, response) => {
     return response.status(415).json({
       error: "UNSUPPORTED_IMAGE_TYPE",
       message: "Only JPEG, PNG, and WebP images are supported."
+    });
+  }
+
+  if (!isSupportedImageBuffer(request.file.buffer, request.file.mimetype)) {
+    return response.status(415).json({
+      error: "INVALID_IMAGE_CONTENT",
+      message: "The file content does not match a supported image format."
     });
   }
 

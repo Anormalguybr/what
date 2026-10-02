@@ -33,3 +33,25 @@ test("rejects an unknown category", () => {
   );
 });
 
+test("forces unknown items to be non-decisive and filters sources", () => {
+  const result = validateClassification(
+    {
+      itemName: "Unclear item",
+      category: "unknown",
+      recyclable: true,
+      confidence: 0.2,
+      sourceNeeded: false,
+      sources: [
+        { name: "Approved source", url: "https://www.dspa.gov.mo/" },
+        { name: "Unapproved source", url: "https://untrusted.example/" }
+      ],
+      quiz: { question: "", options: ["A", "B"], answerIndex: 0, explanation: "" }
+    },
+    [{ name: "DSPA", url: "https://www.dspa.gov.mo/" }]
+  );
+
+  assert.equal(result.recyclable, null);
+  assert.equal(result.sources.length, 1);
+  assert.equal(result.sourceNeeded, false);
+  assert.equal(result.quiz, null);
+});

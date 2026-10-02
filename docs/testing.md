@@ -23,6 +23,18 @@ npm --prefix client run build
 | Provider timeout | `AI_TIMEOUT` | Requires controlled provider test |
 | Unknown or blurry item | `category: unknown` | Requires approved test image |
 
+## Recorded local verification
+
+Recorded on 2026-10-03 in the local development environment:
+
+- `npm --prefix server test`: 7 tests passed.
+- `npm --prefix server run lint`: passed.
+- `npm --prefix client run lint`: passed.
+- `npm --prefix client run build`: passed.
+- HTTP smoke checks: `/api/health` returned 200; no image returned `IMAGE_REQUIRED`; mismatched image content returned `INVALID_IMAGE_CONTENT`; a valid image without a server key returned `AI_NOT_CONFIGURED`.
+
+Live provider classification and classroom user testing remain pending because no live key or participant results are recorded.
+
 ## Education test
 
 Recruit 3–5 classmates or teachers and use anonymous prepared images. Record the item, returned category, whether the user understood the reason, and any error. Do not fill in results before the test is performed.
@@ -30,4 +42,3 @@ Recruit 3–5 classmates or teachers and use anonymous prepared images. Record t
 ## Browser checks
 
 Test the client at desktop 1440×900, tablet 768×1024, and mobile 390×844. Check upload preview, empty state, loading state, API error state, result layout, quiz interaction, keyboard focus, and horizontal overflow.
-
