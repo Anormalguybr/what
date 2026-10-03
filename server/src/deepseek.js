@@ -8,13 +8,15 @@ export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, base
     throw error;
   }
 
+  const retryableCodes = new Set(["AI_EMPTY_RESPONSE", "AI_RATE_LIMITED", "AI_TIMEOUT", "AI_PROVIDER_ERROR", "AI_INVALID_JSON", "AI_INVALID_RESPONSE"]);
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return await requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules });
     } catch (error) {
-      if (error.code !== "AI_EMPTY_RESPONSE" || attempt === 1) {
+      if (!retryableCodes.has(error.code) || attempt === 1) {
         throw error;
       }
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
   }
 }
@@ -35,7 +37,7 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
       body: JSON.stringify({
         model,
         response_format: { type: "json_object" },
-        max_tokens: 900,
+        max_tokens: 1200,
         messages: [
           { role: "system", content: buildSystemPrompt(rules) },
           {
@@ -58,27 +60,48 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
     }
 
     const payload = await response.json();
-    const content = payload?.choices?.[0]?.message?.content;
+    const rawContent = payload?.choices?.[0]?.message?.content;
+    const content = Array.isArray(rawContent)
+      ? rawContent.filter((part) => part && typeof part.text === "string").map((part) => part.text).join("\n")
+      : rawContent;
     if (typeof content !== "string" || !content.trim()) {
       const error = new Error("DeepSeek returned an empty response.");
       error.code = "AI_EMPTY_RESPONSE";
       throw error;
     }
 
-    return validateClassification(JSON.parse(content), rules?.sources || []);
+    let parsed;
+    try {
+      parsed = JSON.parse(stripJsonFence(content));
+    } catch (error) {
+      const jsonError = new Error("The AI response was not valid JSON.");
+      jsonError.code = "AI_INVALID_JSON";
+      jsonError.detail = error.message;
+      throw jsonError;
+    }
+
+    try {
+      return validateClassification(parsed, rules?.sources || []);
+    } catch (error) {
+      const responseError = new Error("The AI response did not match the required classification format.");
+      responseError.code = "AI_INVALID_RESPONSE";
+      responseError.detail = error.message;
+      throw responseError;
+    }
   } catch (error) {
     if (error.name === "AbortError") {
       const timeoutError = new Error("The AI request timed out.");
       timeoutError.code = "AI_TIMEOUT";
       throw timeoutError;
     }
-    if (error instanceof SyntaxError) {
-      const jsonError = new Error("The AI response was not valid JSON.");
-      jsonError.code = "AI_INVALID_JSON";
-      throw jsonError;
-    }
     throw error;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function stripJsonFence(content) {
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return fenced ? fenced[1].trim() : trimmed;
 }

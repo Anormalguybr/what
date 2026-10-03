@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import {
   AlertTriangle,
@@ -6,13 +6,17 @@ import {
   ArrowUpRight,
   Camera,
   Check,
+  CheckCircle2,
   ChevronDown,
+  Circle,
   ExternalLink,
   ImagePlus,
+  Info,
   Leaf,
   LoaderCircle,
   Recycle,
-  RefreshCcw
+  RefreshCcw,
+  UserRound
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -32,6 +36,7 @@ export default function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cameraStreamRef = useRef(null);
+  const cameraStartRef = useRef(null);
   const analysisRequestRef = useRef(null);
 
   useEffect(() => {
@@ -47,6 +52,48 @@ export default function App() {
   useEffect(() => {
     if (screen !== "capture") stopCamera();
   }, [screen]);
+
+  const startCamera = useCallback(async () => {
+    setCameraError("");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Live camera preview is unavailable in this browser. Use Upload image instead.");
+      return;
+    }
+
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      cameraStreamRef.current = stream;
+      setCameraActive(true);
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+        }
+      });
+    } catch (cameraRequestError) {
+      const message = cameraRequestError.name === "NotAllowedError" || cameraRequestError.name === "SecurityError"
+        ? "Camera permission was denied or this page is not using HTTPS. Use Upload image or allow camera access."
+        : "Live camera preview needs HTTPS and camera permission. Use Upload image instead.";
+      setCameraError(message);
+      setCameraActive(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (screen === "capture" && !file && !cameraActive && !cameraError && !cameraStartRef.current) {
+      cameraStartRef.current = startCamera().finally(() => {
+        cameraStartRef.current = null;
+      });
+    }
+  }, [screen, file, cameraActive, cameraError, startCamera]);
 
   useEffect(() => () => stopCamera(), []);
 
@@ -108,11 +155,15 @@ export default function App() {
 
     const body = new FormData();
     body.append("image", file);
+    const timeoutId = window.setTimeout(() => {
+      request.timedOut = true;
+      request.abort();
+    }, 50_000);
 
     try {
       const response = await fetch(`${API_URL}/api/classify`, { method: "POST", body, signal: request.signal });
       const payload = await response.json().catch(() => null);
-      if (request.signal.aborted || analysisRequestRef.current !== request) return;
+      if ((request.signal.aborted && !request.timedOut) || analysisRequestRef.current !== request) return;
       if (!response.ok) {
         throw new Error(payload?.message || "The image could not be classified right now.");
       }
@@ -123,45 +174,12 @@ export default function App() {
       setResult(normalizedPayload);
       setScreen("result");
     } catch (requestError) {
-      if (request.signal.aborted || analysisRequestRef.current !== request) return;
-      setError(requestError.message || "The network connection failed. Please try again.");
+      if ((request.signal.aborted && !request.timedOut) || analysisRequestRef.current !== request) return;
+      setError(request.timedOut ? "The AI service took too long to respond. Please try again." : requestError.message || "The network connection failed. Please try again.");
       setScreen("capture");
     } finally {
+      window.clearTimeout(timeoutId);
       if (analysisRequestRef.current === request) analysisRequestRef.current = null;
-    }
-  }
-
-  async function startCamera() {
-    setCameraError("");
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError("Live camera preview is unavailable in this browser. Use Upload image instead.");
-      return;
-    }
-
-    try {
-      stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
-      });
-      cameraStreamRef.current = stream;
-      setCameraActive(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-        }
-      });
-    } catch (cameraRequestError) {
-      const message = cameraRequestError.name === "NotAllowedError"
-        ? "Camera permission was denied. Use Upload image or allow camera access."
-        : "Live camera preview needs HTTPS and camera permission. Use Upload image instead.";
-      setCameraError(message);
-      setCameraActive(false);
     }
   }
 
@@ -242,6 +260,7 @@ export default function App() {
       {screen === "result" && (
         <ResultScreen
           result={result}
+          previewUrl={previewUrl}
           quizChoice={quizChoice}
           quizSubmitted={quizSubmitted}
           onChoice={setQuizChoice}
@@ -276,29 +295,27 @@ function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cam
 
   return (
     <section className="capture-screen" aria-labelledby="page-title">
-      <header className="capture-header">
-        <a className="brand brand-light" href="/" aria-label="EcoScan AI home">
-          <span className="brand-mark" aria-hidden="true"><Recycle size={17} strokeWidth={2.5} /></span>
-          <span>EcoScan AI</span>
-        </a>
-        <span className="capture-mode"><span className="mode-dot" aria-hidden="true" /> Macau / camera mode</span>
-      </header>
-
-      <div className="capture-layout">
-        <div className="capture-copy">
-          <p className="eyebrow">Waste sorting / 01</p>
-          <h1 id="page-title">See it. Sort it.</h1>
-        </div>
+      <div className="capture-workspace">
+        <aside className="capture-sidebar" aria-label="Scan controls">
+          <a className="brand brand-light" href="/" aria-label="EcoScan AI home">
+            <span className="brand-wordmark"><span>EcoScan</span> AI</span>
+          </a>
+          <div className="sidebar-heading">
+            <p className="eyebrow">Waste sorting / 01</p>
+            <h1 id="page-title">Scan an item</h1>
+          </div>
+          <nav className="capture-nav" aria-label="Capture method">
+            <button className="capture-nav-item is-active" type="button" onClick={onStartCamera} aria-label="Use camera">
+              <Camera size={22} aria-hidden="true" /><span>Camera</span>
+            </button>
+            <button className="capture-nav-item" type="button" onClick={() => uploadInputRef.current?.click()} aria-label="Upload an image">
+              <ImagePlus size={22} aria-hidden="true" /><span>Upload image</span>
+            </button>
+          </nav>
+          <p className="sidebar-footnote"><Info size={14} aria-hidden="true" /> AI guidance is based on the supplied Macau rules.</p>
+        </aside>
 
         <section className="camera-card" aria-label="EcoScan camera">
-          <div className="camera-card-header">
-            <div>
-              <p className="camera-kicker">Live preview</p>
-              <p className="camera-subtitle">{hasPreview ? "Ready to analyze" : cameraActive ? "Live camera preview" : "Center the item in frame"}</p>
-            </div>
-            <span className="lens-pill">AI / local rules</span>
-          </div>
-
           <div className="camera-stage">
             {hasPreview ? (
               <img className="camera-image" src={previewUrl} alt="Selected item preview" />
@@ -315,37 +332,28 @@ function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cam
             <span className="viewfinder viewfinder-tr" aria-hidden="true" />
             <span className="viewfinder viewfinder-bl" aria-hidden="true" />
             <span className="viewfinder viewfinder-br" aria-hidden="true" />
-            <div className="camera-stage-footer">
-              <span>{hasPreview ? "Image selected" : "No image selected"}</span>
-              <span>JPG / PNG / WEBP</span>
-            </div>
           </div>
 
           {(error || cameraError) && <div className="alert" role="alert"><AlertTriangle size={16} aria-hidden="true" /> {error || cameraError}</div>}
 
-          <div className="camera-controls">
+          <div className="camera-controls glass-control-bar">
             <button className="round-control" type="button" onClick={() => uploadInputRef.current?.click()} aria-label="Upload an image">
-              <ImagePlus size={19} aria-hidden="true" />
+              <ImagePlus size={24} aria-hidden="true" /><span>Upload image</span>
             </button>
             <button className={`shutter-control ${hasPreview ? "shutter-ready" : ""}`} type="button" onClick={hasPreview ? onAnalyze : cameraActive ? onCaptureFrame : onStartCamera} aria-label={hasPreview ? "Analyze selected item" : cameraActive ? "Capture photo" : "Start live camera"}>
-              {hasPreview ? <ArrowUpRight size={25} aria-hidden="true" /> : <Camera size={25} aria-hidden="true" />}
+              <span className="shutter-disc">{hasPreview ? <ArrowUpRight size={25} aria-hidden="true" /> : <Camera size={25} aria-hidden="true" />}</span>
+              <span>{hasPreview ? "Analyze" : "Capture"}</span>
             </button>
             <button className="round-control" type="button" onClick={hasPreview ? onReset : onStartCamera} aria-label={hasPreview ? "Choose another image" : "Start live camera"}>
-              {hasPreview ? <RefreshCcw size={19} aria-hidden="true" /> : <Camera size={19} aria-hidden="true" />}
+              {hasPreview ? <RefreshCcw size={24} aria-hidden="true" /> : <RefreshCcw size={24} aria-hidden="true" />}
+              <span>{hasPreview ? "Retake" : "Switch camera"}</span>
             </button>
             <input ref={cameraInputRef} className="visually-hidden" tabIndex={-1} aria-label="Take a photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => onFile(event.target.files?.[0])} />
             <input ref={uploadInputRef} className="visually-hidden" tabIndex={-1} aria-label="Upload image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onFile(event.target.files?.[0])} />
             <canvas ref={canvasRef} className="visually-hidden" aria-hidden="true" />
           </div>
-          <p className="shutter-label">{hasPreview ? "Analyze item" : cameraActive ? "Tap to capture" : "Start camera"}</p>
-          <p className="camera-disclaimer"><AlertTriangle size={13} aria-hidden="true" /> AI results are learning guidance. Check current local rules before disposal.</p>
         </section>
       </div>
-
-      <footer className="capture-footer">
-        <span>AI for Social Innovation · SDG 12 / SDG 13</span>
-        <span>Designed for phone, tablet and desktop</span>
-      </footer>
     </section>
   );
 }
@@ -368,17 +376,34 @@ CaptureScreen.propTypes = {
 };
 
 function LoadingScreen({ previewUrl, onBack }) {
+  const stages = [
+    { label: "Image check", state: "complete" },
+    { label: "Item recognition", state: "active" },
+    { label: "Local guidance", state: "pending" }
+  ];
   return (
     <section className="loading-screen" aria-live="polite" aria-busy="true">
-      <ScreenHeader onBack={onBack} label="Back to camera" />
-      <div className="loading-card">
-        {previewUrl && <img className="loading-image" src={previewUrl} alt="Image being analyzed" />}
-        <div className="loading-shade" />
+      <ScreenHeader onBack={onBack} label="Back to camera" compact />
+      <div className="loading-card glass-panel">
+        <div className="loading-preview-panel">
+          {previewUrl ? <img className="loading-image" src={previewUrl} alt="Image being analyzed" /> : <div className="result-image-fallback"><Camera size={28} aria-hidden="true" /><span>Waiting for image</span></div>}
+        </div>
         <div className="loading-content">
-          <LoaderCircle className="loading-spinner" size={42} aria-hidden="true" />
-          <p className="eyebrow">Reading the item / 02</p>
+          <p className="eyebrow">Analysis / 02</p>
           <h1>Checking the evidence.</h1>
-          <p>Identifying the material, checking the supplied Macau guidance, and preparing your learning tips.</p>
+          <p>Analyzing your photo</p>
+          <LoaderCircle className="loading-spinner" size={76} aria-hidden="true" />
+          <div className="loading-steps" aria-label="Analysis progress">
+            {stages.map((stage, index) => (
+              <div className="loading-step" key={stage.label}>
+                <span className={`loading-step-icon is-${stage.state}`} aria-hidden="true">
+                  {stage.state === "complete" ? <Check size={15} /> : stage.state === "active" ? <LoaderCircle size={17} /> : <Circle size={16} />}
+                </span>
+                <span>{stage.label}</span>
+                {index < stages.length - 1 && <span className="loading-step-line" aria-hidden="true" />}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -390,50 +415,46 @@ LoadingScreen.propTypes = {
   onBack: PropTypes.func.isRequired
 };
 
-function ResultScreen({ result, quizChoice, quizSubmitted, onChoice, onSubmit, onBack, onReset }) {
+function ResultScreen({ result, previewUrl, quizChoice, quizSubmitted, onChoice, onSubmit, onBack, onReset }) {
   const [showDetails, setShowDetails] = useState(false);
   useEffect(() => setShowDetails(false), [result]);
   if (!result) return null;
   const isLowConfidence = result.confidence < 0.65;
   const confidencePercent = Math.round(result.confidence * 100);
+  const confidenceLabel = isLowConfidence ? "Low" : confidencePercent >= 0.85 * 100 ? "High" : "Medium";
+  const decisionStatus = result.recyclable === null ? "Check local rules" : result.recyclable ? "Likely recyclable" : "Not recyclable";
 
   return (
     <section className="result-screen" aria-labelledby="result-title">
-      <ScreenHeader onBack={onBack} label="Back to camera" />
+      <ScreenHeader onBack={onBack} label="Back to camera" centered />
       <div className="result-content">
-        <div className="result-intro">
-          <div>
+        <div className="result-layout">
+          <figure className="result-image-card">
+            {previewUrl ? <img src={previewUrl} alt={`Uploaded item preview: ${result.itemName}`} /> : <div className="result-image-fallback"><Camera size={28} aria-hidden="true" /><span>No preview available</span></div>}
+            <figcaption className="visually-hidden">Image used for this analysis</figcaption>
+          </figure>
+
+          <div className="result-panel">
             <p className="eyebrow">Analysis complete / 03</p>
             <h1 id="result-title">{result.itemName}</h1>
-            <p>Here is the clearest next step from the image and the supplied Macau guidance.</p>
-          </div>
-          <button className="new-scan-button" type="button" onClick={onReset}><RefreshCcw size={16} aria-hidden="true" /> New scan</button>
-        </div>
-
-        <div className="result-overview result-summary-only">
-          <article className="result-hero-card">
-            <div className="result-label">Recommended sort</div>
-            <div className="result-sort-row">
-              <span className={`category-badge category-${result.category}`}>{formatCategory(result.category)}</span>
-              <span className={`recycle-status ${result.recyclable === null ? "is-unknown" : result.recyclable ? "is-recyclable" : "is-not-recyclable"}`}>
-                {result.recyclable === null ? "Check locally" : result.recyclable ? "Recyclable" : "Not recyclable"}
-              </span>
+            <p className="result-category">Category: <span>{formatCategory(result.category)}</span></p>
+            <div className={`decision-banner ${result.recyclable === null ? "is-unknown" : result.recyclable ? "is-recyclable" : "is-not-recyclable"}`}>
+              <Recycle size={42} aria-hidden="true" />
+              <div><strong>{decisionStatus}</strong><span>Check local collection rules</span></div>
             </div>
-            <div className="confidence-row" title="The model's confidence estimate, not measured accuracy.">
-              <span>{confidencePercent}% AI confidence</span>
-              <span className="confidence-track" role="meter" aria-label="AI confidence estimate" aria-valuemin={0} aria-valuemax={100} aria-valuenow={confidencePercent}>
-                <span style={{ width: `${confidencePercent}%` }} />
-              </span>
+            <div className="confidence-callout confidence-row">
+              <Info size={24} aria-hidden="true" />
+              <div><strong>AI confidence: <span>{confidenceLabel}</span></strong><small>{confidencePercent}% estimate · not official certification</small><span className="confidence-track" role="meter" aria-label="AI confidence estimate" aria-valuemin={0} aria-valuemax={100} aria-valuenow={confidencePercent}><span style={{ width: `${confidencePercent}%` }} /></span></div>
             </div>
-            {(isLowConfidence || result.category === "unknown" || result.sourceNeeded) && <p className="notice-text">Use this as a learning aid and check the current local collection rule before disposal.</p>}
-            <div className="summary-trace">
-              <div className="result-label">Decision trace</div>
-              <p className="result-copy">{result.reason || "No explanation was returned."}</p>
+            <div className="decision-trace-block">
+              <h2>Decision trace</h2>
+              <DecisionTrace result={result} />
             </div>
             <button className="more-info-button" type="button" aria-expanded={showDetails} aria-controls="result-details" onClick={() => setShowDetails((current) => !current)}>
-              {showDetails ? "Hide information" : "More information"} <ChevronDown className={showDetails ? "is-open" : ""} size={16} aria-hidden="true" />
+              <ChevronDown className={showDetails ? "is-open" : ""} size={18} aria-hidden="true" /> {showDetails ? "Hide information" : "More information"}
             </button>
-          </article>
+            <button className="scan-again-button" type="button" onClick={onReset}><Camera size={19} aria-hidden="true" /> Scan another item</button>
+          </div>
         </div>
 
           <div id="result-details" className="result-details" hidden={!showDetails}>
@@ -473,6 +494,7 @@ ResultScreen.propTypes = {
       explanation: PropTypes.string.isRequired
     })
   }),
+  previewUrl: PropTypes.string.isRequired,
   quizChoice: PropTypes.number,
   quizSubmitted: PropTypes.bool.isRequired,
   onChoice: PropTypes.func.isRequired,
@@ -481,18 +503,40 @@ ResultScreen.propTypes = {
   onReset: PropTypes.func.isRequired
 };
 
-function ScreenHeader({ onBack, label }) {
+function DecisionTrace({ result }) {
+  const localRulesState = result.sourceNeeded ? "warning" : "complete";
   return (
-    <header className="screen-header">
+    <div className="decision-trace-list">
+      <div className="decision-trace-item"><span className="trace-icon is-complete"><CheckCircle2 size={18} aria-hidden="true" /></span><div><strong>Item identified</strong><span>Recognised as {result.itemName.toLowerCase()}</span></div></div>
+      <div className="decision-trace-item"><span className="trace-icon is-complete"><CheckCircle2 size={18} aria-hidden="true" /></span><div><strong>Material estimated</strong><span>Estimated material: {formatCategory(result.category)}</span></div></div>
+      <div className="decision-trace-item"><span className={`trace-icon is-${localRulesState}`}>{localRulesState === "complete" ? <CheckCircle2 size={18} aria-hidden="true" /> : <AlertTriangle size={18} aria-hidden="true" />}</span><div><strong>{result.sourceNeeded ? "Local rules need checking" : "Local guidance matched"}</strong><span>{result.sourceNeeded ? "Recycling rules vary by location." : "The supplied guidance was used."}</span></div></div>
+    </div>
+  );
+}
+
+DecisionTrace.propTypes = {
+  result: PropTypes.shape({
+    itemName: PropTypes.string.isRequired,
+    category: PropTypes.string.isRequired,
+    sourceNeeded: PropTypes.bool
+  }).isRequired
+};
+
+function ScreenHeader({ onBack, label, centered = false, compact = false }) {
+  return (
+    <header className={`screen-header ${centered ? "is-centered" : ""} ${compact ? "is-compact" : ""}`}>
       <button className="back-button" type="button" onClick={onBack}><ArrowLeft size={17} aria-hidden="true" /> {label}</button>
-      <span className="screen-header-brand"><Recycle size={15} aria-hidden="true" /> EcoScan AI</span>
+      <span className="screen-header-brand"><span>EcoScan</span> AI</span>
+      <UserRound className="screen-header-profile" size={19} aria-hidden="true" />
     </header>
   );
 }
 
 ScreenHeader.propTypes = {
   onBack: PropTypes.func.isRequired,
-  label: PropTypes.string.isRequired
+  label: PropTypes.string.isRequired,
+  centered: PropTypes.bool,
+  compact: PropTypes.bool
 };
 
 function Quiz({ quiz, choice, submitted, onChoice, onSubmit }) {

@@ -60,10 +60,13 @@ async function scan() {
   await click('[aria-label="Analyze selected item"]');
 }
 
-test("summary shows Decision trace and a labelled confidence meter before expansion", async () => {
+test("result shows the evidence panel and labelled confidence meter before expansion", async () => {
   await scan();
-  assert.equal(document.querySelector(".summary-trace .result-copy").textContent, classification.reason);
-  assert.equal(document.querySelectorAll(".summary-trace").length, 1);
+  assert.ok(document.querySelector(".result-image-card img"));
+  assert.equal(document.querySelector(".decision-banner").textContent.includes("Likely recyclable"), true);
+  assert.equal(document.querySelectorAll(".decision-trace-item").length, 3);
+  assert.equal(document.querySelector(".decision-trace-item").textContent.includes("Item identified"), true);
+  assert.equal(document.querySelector(".result-panel").textContent.includes("Decision trace"), true);
   const meter = document.querySelector('[role="meter"]');
   assert.equal(meter.getAttribute("aria-valuenow"), "87");
   assert.equal(meter.getAttribute("aria-label"), "AI confidence estimate");
@@ -78,6 +81,7 @@ test("More information toggles details and the quiz still gives learning feedbac
   assert.equal(document.querySelector("#result-details").hidden, false);
   assert.equal(document.querySelector(".more-info-button").getAttribute("aria-expanded"), "true");
   assert.ok(document.querySelector(".steps-list"));
+  assert.equal(document.querySelectorAll(".steps-list li").length, classification.cleaningSteps.length);
   await click('input[name="quiz"]');
   await click(".quiz-submit");
   assert.match(document.querySelector(".quiz-feedback").textContent, /Correct/);
@@ -114,7 +118,7 @@ test("malformed success responses show an error instead of a broken result scree
 test("unknown results never display a definitive recyclable status", async () => {
   globalThis.fetch = async () => ({ ok: true, json: async () => ({ ...classification, category: "unknown", recyclable: null, confidence: 0 }) });
   await scan();
-  assert.equal(document.querySelector(".recycle-status").textContent, "Check locally");
+  assert.equal(document.querySelector(".decision-banner").textContent.includes("Check local rules"), true);
   assert.equal(document.querySelector('[role="meter"]').getAttribute("aria-valuenow"), "0");
 });
 
@@ -125,5 +129,5 @@ test("normalizes provider values serialized as strings", async () => {
   });
   await scan();
   assert.equal(document.querySelector(".result-screen").querySelector(".confidence-row").textContent.includes("74%"), true);
-  assert.equal(document.querySelector(".recycle-status").textContent, "Recyclable");
+  assert.equal(document.querySelector(".decision-banner").textContent.includes("Likely recyclable"), true);
 });
