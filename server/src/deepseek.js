@@ -35,7 +35,8 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
       body: JSON.stringify({
         model,
         response_format: { type: "json_object" },
-        max_tokens: 900,
+        thinking: { type: "disabled" },
+        max_tokens: 2000,
         messages: [
           { role: "system", content: buildSystemPrompt(rules) },
           {
@@ -58,14 +59,19 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
     }
 
     const payload = await response.json();
-    const content = payload?.choices?.[0]?.message?.content;
+    const choice = payload?.choices?.[0];
+    const content = choice?.message?.content;
     if (typeof content !== "string" || !content.trim()) {
-      const error = new Error("DeepSeek returned an empty response.");
+      const error = new Error(
+        choice?.finish_reason === "length"
+          ? "DeepSeek stopped before returning a result because it reached the token limit."
+          : "DeepSeek returned an empty response."
+      );
       error.code = "AI_EMPTY_RESPONSE";
       throw error;
     }
 
-    return validateClassification(JSON.parse(content), rules?.sources || []);
+    return validateClassification(parseJsonContent(content), rules?.sources || []);
   } catch (error) {
     if (error.name === "AbortError") {
       const timeoutError = new Error("The AI request timed out.");
@@ -81,4 +87,12 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function parseJsonContent(content) {
+  const cleaned = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
+  return JSON.parse(cleaned);
 }
