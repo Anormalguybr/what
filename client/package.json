@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "test": "node test/run.mjs",
     "build": "vite build",
     "lint": "eslint src"
   },
@@ -20,10 +21,12 @@
     "vite": "^6.0.5"
   },
   "devDependencies": {
+    "esbuild": "^0.25.12",
     "eslint": "^9.17.0",
     "eslint-plugin-react": "^7.37.3",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
+    "jsdom": "^26.1.0",
     "prop-types": "^15.8.1"
   }
 }

@@ -20,7 +20,7 @@
       "label": "Paper and cardboard",
       "examples": ["cardboard box", "paper carton", "clean paper"],
       "recyclable": true,
-      "localGuidance": "Keep paper and cardboard dry and remove non-paper parts when required by the current local collection guidance.",
+      "localGuidance": "Only clean, dry paper and cardboard should match this stream. Used tissues, napkins, paper towels, wet paper, receipts, greasy paper, and food-soiled paper do not match this recyclable paper rule.",
       "sourceNeeded": true
     },
     {
@@ -42,11 +42,10 @@
     {
       "category": "general_waste",
       "label": "General waste",
-      "examples": ["food-soiled packaging", "mixed material item"],
+      "examples": ["used tissue", "paper napkin", "paper towel", "wet paper", "food-soiled paper", "greasy paper", "receipt", "mixed material item"],
       "recyclable": false,
-      "localGuidance": "If the item cannot be matched to a local recyclable stream, do not place it in a recycling container.",
+      "localGuidance": "Used tissues, napkins, paper towels, wet or greasy paper, food-soiled paper, receipts, and items that cannot be matched to a local recyclable stream should not be placed in a recycling container.",
       "sourceNeeded": true
     }
   ]
 }
-

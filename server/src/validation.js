@@ -35,7 +35,7 @@ export function validateClassification(value, allowedSources = []) {
     throw new Error("The AI response has an invalid confidence value.");
   }
 
-  return {
+  const conservative = applyConservativePaperGuard({
     itemName: value.itemName.trim().slice(0, 120),
     category: value.category,
     recyclable: value.category === "unknown" ? null : typeof value.recyclable === "boolean" ? value.recyclable : null,
@@ -47,7 +47,24 @@ export function validateClassification(value, allowedSources = []) {
     sourceNeeded: sources.length === 0 || value.sourceNeeded !== false,
     sources,
     quiz: normalizeQuiz(value.quiz)
-  };
+  });
+
+  return conservative;
+}
+
+function applyConservativePaperGuard(result) {
+  const searchable = `${result.itemName} ${result.reason} ${result.cleaningSteps.join(" ")}`.toLowerCase();
+  const usedPaperPattern = /tissue|napkin|paper towel|paper towel|wipe|receipt|food[- ]soiled|greasy|wet paper/;
+  if (usedPaperPattern.test(searchable) && result.category === "paper") {
+    return {
+      ...result,
+      category: "general_waste",
+      recyclable: false,
+      confidence: Math.min(result.confidence, 0.59),
+      reason: `${result.reason} The supplied guidance treats used, wet, greasy, or contaminated paper-like items as general waste.`.trim()
+    };
+  }
+  return result;
 }
 
 function isAllowedSource(source, allowedSources) {
