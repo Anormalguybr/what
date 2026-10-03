@@ -26,4 +26,4 @@ Images are kept in memory for the request and are not intentionally persisted by
 
 ## Cross-platform browser support
 
-The client is a standard React/Vite web application and does not depend on macOS APIs. Windows 10 and 11 users can run the same Node.js scripts in PowerShell and use Chrome or Microsoft Edge. The camera control uses the browser file input with `capture="environment"`; browsers may ignore that hint on desktop, so the upload control remains the reliable fallback. Deployed camera use requires HTTPS and camera permission.
+The client is a standard React/Vite web application and does not depend on macOS APIs. Windows 10 and 11 users can run the same Node.js scripts in PowerShell with Node.js 18.11+ and npm 9+, then use Chrome or Microsoft Edge. The camera control uses the browser file input with `capture="environment"`; browsers may ignore that hint on desktop, so the upload control remains the reliable fallback. Deployed camera use requires HTTPS and camera permission.

@@ -14,7 +14,7 @@ docs/      Architecture, data sources, testing, and AI disclosure
 
 ## Local setup
 
-Requirements: Node.js 18 or newer and npm.
+Requirements: Node.js 18.11 or newer and npm 9 or newer. Node 20 or newer is recommended for Windows.
 
 ```bash
 cp .env.example server/.env
@@ -33,7 +33,7 @@ Open <http://localhost:5173>. Camera capture requires HTTPS in a deployed enviro
 
 ### Windows PowerShell
 
-The web app runs on Windows 10 or 11 with Node.js 18 or newer. In PowerShell, the equivalent setup is:
+The web app runs on Windows 10 or 11 with Node.js 18.11 or newer. In PowerShell, the equivalent setup is:
 
 ```powershell
 Copy-Item .env.example server/.env
