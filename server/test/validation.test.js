@@ -55,3 +55,23 @@ test("forces unknown items to be non-decisive and filters sources", () => {
   assert.equal(result.sourceNeeded, false);
   assert.equal(result.quiz, null);
 });
+
+test("downgrades used tissue-like paper that the model mislabels as recyclable paper", () => {
+  const result = validateClassification({
+    itemName: "Crumpled used facial tissue",
+    category: "paper",
+    recyclable: true,
+    confidence: 0.87,
+    reason: "The image shows a paper-like item.",
+    cleaningSteps: ["Do not rinse the tissue."],
+    learningFact: "",
+    safetyNote: "",
+    sourceNeeded: true,
+    sources: [],
+    quiz: null
+  });
+
+  assert.equal(result.category, "general_waste");
+  assert.equal(result.recyclable, false);
+  assert.equal(result.confidence, 0.59);
+});

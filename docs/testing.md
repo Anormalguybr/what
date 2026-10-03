@@ -35,6 +35,8 @@ Recorded on 2026-10-03 in the local development environment:
 
 Live provider classification and classroom user testing remain pending because no live key or participant results are recorded.
 
+Live smoke check on 2026-10-03 with the anonymous crumpled-paper reference image returned `general_waste`, `recyclable: false`, and `confidence: 0.68` after the conservative paper safeguard.
+
 ## Education test
 
 Recruit 3–5 classmates or teachers and use anonymous prepared images. Record the item, returned category, whether the user understood the reason, and any error. Do not fill in results before the test is performed.
