@@ -41,4 +41,4 @@ Recruit 3–5 classmates or teachers and use anonymous prepared images. Record t
 
 ## Browser checks
 
-Test the client at desktop 1440×900, tablet 768×1024, and mobile 390×844. Check upload preview, empty state, loading state, API error state, result layout, quiz interaction, keyboard focus, and horizontal overflow.
+Test the client at desktop 1440×900, tablet 768×1024, and mobile 390×844. Check live camera permission, captured-frame preview, upload fallback, loading screen, API error state, concise result summary, `More information`, fixed back button, quiz interaction, keyboard focus, and horizontal overflow. A phone on a plain HTTP LAN URL may be blocked from `getUserMedia`; record that as an environment limitation and test the upload fallback unless HTTPS is configured.

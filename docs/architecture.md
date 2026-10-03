@@ -2,8 +2,8 @@
 
 ## Request flow
 
-1. The React client accepts a JPEG, PNG, or WebP image and shows a local preview.
-2. The client sends the image as `multipart/form-data` to `POST /api/classify`.
+1. The React client requests a live camera stream when the user taps the shutter control. A canvas captures one video frame; the user can also use the upload fallback.
+2. The client shows the selected frame locally and sends it as `multipart/form-data` to `POST /api/classify` after the loading screen begins.
 3. Express validates the file type and size in memory. The image is not written to disk.
 4. The server sends the image and the current starter rules to the configured DeepSeek vision model.
 5. The server validates the returned JSON against the EcoScan response contract.
@@ -26,4 +26,4 @@ Images are kept in memory for the request and are not intentionally persisted by
 
 ## Cross-platform browser support
 
-The client is a standard React/Vite web application and does not depend on macOS APIs. Windows 10 and 11 users can run the same Node.js scripts in PowerShell with Node.js 18.11+ and npm 9+, then use Chrome or Microsoft Edge. The camera control uses the browser file input with `capture="environment"`; browsers may ignore that hint on desktop, so the upload control remains the reliable fallback. Deployed camera use requires HTTPS and camera permission.
+The client is a standard React/Vite web application and does not depend on macOS APIs. Windows 10 and 11 users can run the same Node.js scripts in PowerShell with Node.js 18.11+ and npm 9+, then use Chrome or Microsoft Edge. The capture screen uses `navigator.mediaDevices.getUserMedia` for a live preview and a canvas frame capture; upload remains the reliable fallback. Phone camera access requires HTTPS, except for localhost browser development, and requires user permission.

@@ -6,14 +6,13 @@ import {
   ArrowUpRight,
   Camera,
   Check,
+  ChevronDown,
   ExternalLink,
   ImagePlus,
   Leaf,
   LoaderCircle,
   Recycle,
-  RefreshCcw,
-  ShieldCheck,
-  Upload
+  RefreshCcw
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -26,8 +25,13 @@ export default function App() {
   const [error, setError] = useState("");
   const [quizChoice, setQuizChoice] = useState(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState("");
   const cameraInputRef = useRef(null);
   const uploadInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const cameraStreamRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -39,12 +43,20 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [screen]);
 
+  useEffect(() => {
+    if (screen !== "capture") stopCamera();
+  }, [screen]);
+
+  useEffect(() => () => stopCamera(), []);
+
   function selectFile(nextFile) {
     setError("");
     setResult(null);
     setQuizChoice(null);
     setQuizSubmitted(false);
     setScreen("capture");
+    setCameraError("");
+    stopCamera();
 
     if (!nextFile) return;
     if (!nextFile.type.startsWith("image/")) {
@@ -105,12 +117,77 @@ export default function App() {
     }
   }
 
+  async function startCamera() {
+    setCameraError("");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Live camera preview is unavailable in this browser. Use Upload image instead.");
+      return;
+    }
+
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      cameraStreamRef.current = stream;
+      setCameraActive(true);
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+        }
+      });
+    } catch (cameraRequestError) {
+      const message = cameraRequestError.name === "NotAllowedError"
+        ? "Camera permission was denied. Use Upload image or allow camera access."
+        : "Live camera preview needs HTTPS and camera permission. Use Upload image instead.";
+      setCameraError(message);
+      setCameraActive(false);
+    }
+  }
+
+  function stopCamera() {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraActive(false);
+  }
+
+  function captureFrame() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState < 2 || !video.videoWidth) {
+      setCameraError("The camera is still warming up. Please try again.");
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setCameraError("The photo could not be captured. Please use Upload image.");
+        return;
+      }
+      const capturedFile = new File([blob], `ecoscan-${Date.now()}.jpg`, { type: "image/jpeg" });
+      stopCamera();
+      selectFile(capturedFile);
+    }, "image/jpeg", 0.9);
+  }
+
   function resetScan() {
     setFile(null);
     setResult(null);
     setError("");
     setQuizChoice(null);
     setQuizSubmitted(false);
+    setCameraError("");
+    stopCamera();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl("");
     setScreen("capture");
@@ -130,11 +207,17 @@ export default function App() {
           file={file}
           previewUrl={previewUrl}
           error={error}
+          cameraError={cameraError}
+          cameraActive={cameraActive}
           cameraInputRef={cameraInputRef}
           uploadInputRef={uploadInputRef}
+          videoRef={videoRef}
+          canvasRef={canvasRef}
           onFile={selectFile}
           onAnalyze={analyzeImage}
           onReset={resetScan}
+          onStartCamera={startCamera}
+          onCaptureFrame={captureFrame}
         />
       )}
       {screen === "loading" && <LoadingScreen previewUrl={previewUrl} onBack={backToCamera} />}
@@ -153,7 +236,7 @@ export default function App() {
   );
 }
 
-function CaptureScreen({ file, previewUrl, error, cameraInputRef, uploadInputRef, onFile, onAnalyze, onReset }) {
+function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cameraInputRef, uploadInputRef, videoRef, canvasRef, onFile, onAnalyze, onReset, onStartCamera, onCaptureFrame }) {
   const hasPreview = Boolean(file && previewUrl);
 
   return (
@@ -170,15 +253,13 @@ function CaptureScreen({ file, previewUrl, error, cameraInputRef, uploadInputRef
         <div className="capture-copy">
           <p className="eyebrow">Waste sorting / 01</p>
           <h1 id="page-title">See it. Sort it.</h1>
-          <p className="intro-copy">One photo, one clear next step. Built for Macau classrooms.</p>
-          <p className="privacy-note"><ShieldCheck size={16} aria-hidden="true" /> Images are processed for this scan and are not intentionally stored.</p>
         </div>
 
         <section className="camera-card" aria-label="EcoScan camera">
           <div className="camera-card-header">
             <div>
               <p className="camera-kicker">Live preview</p>
-              <p className="camera-subtitle">{hasPreview ? "Ready to analyze" : "Center the item in frame"}</p>
+              <p className="camera-subtitle">{hasPreview ? "Ready to analyze" : cameraActive ? "Live camera preview" : "Center the item in frame"}</p>
             </div>
             <span className="lens-pill">AI / local rules</span>
           </div>
@@ -186,6 +267,8 @@ function CaptureScreen({ file, previewUrl, error, cameraInputRef, uploadInputRef
           <div className="camera-stage">
             {hasPreview ? (
               <img className="camera-image" src={previewUrl} alt="Selected item preview" />
+            ) : cameraActive ? (
+              <video ref={videoRef} className="camera-image" autoPlay playsInline muted aria-label="Live camera preview" />
             ) : (
               <div className="camera-empty">
                 <span className="camera-empty-icon" aria-hidden="true"><Camera size={25} strokeWidth={1.8} /></span>
@@ -203,22 +286,23 @@ function CaptureScreen({ file, previewUrl, error, cameraInputRef, uploadInputRef
             </div>
           </div>
 
-          {error && <div className="alert" role="alert"><AlertTriangle size={16} aria-hidden="true" /> {error}</div>}
+          {(error || cameraError) && <div className="alert" role="alert"><AlertTriangle size={16} aria-hidden="true" /> {error || cameraError}</div>}
 
           <div className="camera-controls">
             <button className="round-control" type="button" onClick={() => uploadInputRef.current?.click()} aria-label="Upload an image">
               <ImagePlus size={19} aria-hidden="true" />
             </button>
-            <button className={`shutter-control ${hasPreview ? "shutter-ready" : ""}`} type="button" onClick={hasPreview ? onAnalyze : () => cameraInputRef.current?.click()} aria-label={hasPreview ? "Analyze selected item" : "Take a photo"}>
+            <button className={`shutter-control ${hasPreview ? "shutter-ready" : ""}`} type="button" onClick={hasPreview ? onAnalyze : cameraActive ? onCaptureFrame : onStartCamera} aria-label={hasPreview ? "Analyze selected item" : cameraActive ? "Capture photo" : "Start live camera"}>
               {hasPreview ? <ArrowUpRight size={25} aria-hidden="true" /> : <Camera size={25} aria-hidden="true" />}
             </button>
-            <button className="round-control" type="button" onClick={hasPreview ? onReset : () => cameraInputRef.current?.click()} aria-label={hasPreview ? "Choose another image" : "Open camera"}>
-              {hasPreview ? <RefreshCcw size={19} aria-hidden="true" /> : <Upload size={19} aria-hidden="true" />}
+            <button className="round-control" type="button" onClick={hasPreview ? onReset : onStartCamera} aria-label={hasPreview ? "Choose another image" : "Start live camera"}>
+              {hasPreview ? <RefreshCcw size={19} aria-hidden="true" /> : <Camera size={19} aria-hidden="true" />}
             </button>
             <input ref={cameraInputRef} className="visually-hidden" tabIndex={-1} aria-label="Take a photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => onFile(event.target.files?.[0])} />
             <input ref={uploadInputRef} className="visually-hidden" tabIndex={-1} aria-label="Upload image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onFile(event.target.files?.[0])} />
+            <canvas ref={canvasRef} className="visually-hidden" aria-hidden="true" />
           </div>
-          <p className="shutter-label">{hasPreview ? "Analyze item" : "Tap to capture"}</p>
+          <p className="shutter-label">{hasPreview ? "Analyze item" : cameraActive ? "Tap to capture" : "Start camera"}</p>
           <p className="camera-disclaimer"><AlertTriangle size={13} aria-hidden="true" /> AI results are learning guidance. Check current local rules before disposal.</p>
         </section>
       </div>
@@ -235,11 +319,17 @@ CaptureScreen.propTypes = {
   file: PropTypes.object,
   previewUrl: PropTypes.string.isRequired,
   error: PropTypes.string.isRequired,
+  cameraError: PropTypes.string.isRequired,
+  cameraActive: PropTypes.bool.isRequired,
   cameraInputRef: PropTypes.object.isRequired,
   uploadInputRef: PropTypes.object.isRequired,
+  videoRef: PropTypes.object.isRequired,
+  canvasRef: PropTypes.object.isRequired,
   onFile: PropTypes.func.isRequired,
   onAnalyze: PropTypes.func.isRequired,
-  onReset: PropTypes.func.isRequired
+  onReset: PropTypes.func.isRequired,
+  onStartCamera: PropTypes.func.isRequired,
+  onCaptureFrame: PropTypes.func.isRequired
 };
 
 function LoadingScreen({ previewUrl, onBack }) {
@@ -266,6 +356,7 @@ LoadingScreen.propTypes = {
 };
 
 function ResultScreen({ result, quizChoice, quizSubmitted, onChoice, onSubmit, onBack, onReset }) {
+  const [showDetails, setShowDetails] = useState(false);
   if (!result) return null;
   const isLowConfidence = result.confidence < 0.65;
   const confidenceLabel = `${Math.round(result.confidence * 100)}% confidence`;
@@ -283,7 +374,7 @@ function ResultScreen({ result, quizChoice, quizSubmitted, onChoice, onSubmit, o
           <button className="new-scan-button" type="button" onClick={onReset}><RefreshCcw size={16} aria-hidden="true" /> New scan</button>
         </div>
 
-        <div className="result-overview">
+        <div className="result-overview result-summary-only">
           <article className="result-hero-card">
             <div className="result-label">Recommended sort</div>
             <div className="result-sort-row">
@@ -294,24 +385,29 @@ function ResultScreen({ result, quizChoice, quizSubmitted, onChoice, onSubmit, o
             </div>
             <div className="confidence-row"><span>{confidenceLabel}</span><span className="confidence-track"><span style={{ width: `${Math.round(result.confidence * 100)}%` }} /></span></div>
             {(isLowConfidence || result.category === "unknown" || result.sourceNeeded) && <p className="notice-text">Use this as a learning aid and check the current local collection rule before disposal.</p>}
-          </article>
-
-          <article className="result-detail-card">
-            <div className="result-label">Decision trace</div>
-            <p className="result-copy">{result.reason || "No explanation was returned."}</p>
-            <div className="result-label">Cleaning protocol</div>
-            {result.cleaningSteps.length ? <ol className="steps-list">{result.cleaningSteps.map((step) => <li key={step}>{step}</li>)}</ol> : <p className="muted-copy">No cleaning steps were returned.</p>}
-          </article>
-
-          <article className="result-detail-card learning-result-card">
-            <div className="result-label"><Leaf size={15} aria-hidden="true" /> Learning signal</div>
-            <p className="result-copy">{result.learningFact || "The AI did not return a learning fact."}</p>
-            {result.safetyNote && <p className="safety-note"><strong>Safety:</strong> {result.safetyNote}</p>}
-            {result.sources?.length > 0 && <div className="sources-block"><div className="result-label">Sources</div>{result.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.name} <ExternalLink size={13} aria-hidden="true" /></a>)}</div>}
+            <button className="more-info-button" type="button" aria-expanded={showDetails} onClick={() => setShowDetails((current) => !current)}>
+              {showDetails ? "Hide information" : "More information"} <ChevronDown className={showDetails ? "is-open" : ""} size={16} aria-hidden="true" />
+            </button>
           </article>
         </div>
 
-        {result.quiz && <Quiz quiz={result.quiz} choice={quizChoice} submitted={quizSubmitted} onChoice={onChoice} onSubmit={onSubmit} />}
+        {showDetails && (
+          <div className="result-details">
+            <article className="result-detail-card">
+              <div className="result-label">Decision trace</div>
+              <p className="result-copy">{result.reason || "No explanation was returned."}</p>
+              <div className="result-label">Cleaning protocol</div>
+              {result.cleaningSteps.length ? <ol className="steps-list">{result.cleaningSteps.map((step) => <li key={step}>{step}</li>)}</ol> : <p className="muted-copy">No cleaning steps were returned.</p>}
+            </article>
+            <article className="result-detail-card learning-result-card">
+              <div className="result-label"><Leaf size={15} aria-hidden="true" /> Learning signal</div>
+              <p className="result-copy">{result.learningFact || "The AI did not return a learning fact."}</p>
+              {result.safetyNote && <p className="safety-note"><strong>Safety:</strong> {result.safetyNote}</p>}
+              {result.sources?.length > 0 && <div className="sources-block"><div className="result-label">Sources</div>{result.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.name} <ExternalLink size={13} aria-hidden="true" /></a>)}</div>}
+            </article>
+            {result.quiz && <Quiz quiz={result.quiz} choice={quizChoice} submitted={quizSubmitted} onChoice={onChoice} onSubmit={onSubmit} />}
+          </div>
+        )}
       </div>
     </section>
   );

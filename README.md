@@ -29,7 +29,7 @@ npm --prefix server run dev
 npm --prefix client run dev
 ```
 
-Open <http://localhost:5173>. Camera capture requires HTTPS in a deployed environment; local development can use the upload control.
+Open <http://localhost:5173>. The capture screen requests a live camera preview with `getUserMedia`; after the shutter is pressed, the current video frame becomes the image sent for analysis. Camera access requires HTTPS on phones (localhost is also allowed by browsers). The upload control remains the fallback when a LAN URL is not served over HTTPS or permission is denied.
 
 ### Windows PowerShell
 

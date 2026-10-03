@@ -16,7 +16,10 @@ export default [
         window: "readonly",
         document: "readonly",
         URL: "readonly",
+        File: "readonly",
         FormData: "readonly",
+        navigator: "readonly",
+        requestAnimationFrame: "readonly",
         fetch: "readonly"
       }
     },
