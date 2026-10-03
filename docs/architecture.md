@@ -7,7 +7,7 @@
 3. Express validates the file type and size in memory. The image is not written to disk.
 4. The server sends the image and the current starter rules to the configured DeepSeek vision model.
 5. The server validates the returned JSON against the EcoScan response contract.
-6. The client renders the classification, uncertainty, cleaning guidance, learning fact, sources, and quiz.
+6. The client renders the classification, uncertainty, disposal options, cleaning guidance, learning fact, sources, and quiz.
 
 ## Responsibility boundaries
 
@@ -15,6 +15,14 @@
 - Express handles validation, CORS, secrets, provider errors, and response normalization.
 - DeepSeek identifies the visible object and writes English explanations.
 - The Macau rules data is the intended local policy source. It must be reviewed against current official Macau guidance before public use.
+
+## Guidance data and the multi-option contract
+
+The local guidance file `server/data/macau-recycling-rules.json` is a curated, source-cited knowledge base. Each source has an id, name, url and access date. Each rule may carry an `options` array for items that have more than one official channel in Macau.
+
+Batteries are the first such item. The `electronic` rule lists the real Macau channels: small batteries to DSPA collection boxes, rechargeable batteries and power banks with taped contacts, chargers to the Electronic and Electrical Equipment Recycling Programme, large batteries to mobile collection points or the pretreatment workshop, and large quantities by prior arrangement with the DSPA.
+
+The AI response contract includes `disposalOptions`, an array of `{ title, guidance, precautions, location, source }`. The server validates every option and drops any option whose source is not in the supplied source list, so the model cannot invent a channel or a location. This is a curated approach: it needs no runtime web fetch, works offline, and stays explainable.
 
 ## Provider and search policy
 

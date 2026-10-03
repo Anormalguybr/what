@@ -61,7 +61,7 @@ The server uses the OpenAI-compatible DeepSeek endpoint and the configured `DEEP
 
 ## API
 
-`POST /api/classify` accepts `multipart/form-data` with one field named `image`. Supported types are JPEG, PNG, and WebP. The response is a fixed JSON object containing the item name, category, confidence, reason, cleaning steps, learning fact, safety note, sources, and quiz data.
+`POST /api/classify` accepts `multipart/form-data` with one field named `image`. Supported types are JPEG, PNG, and WebP. The response is a fixed JSON object containing the item name, category, confidence, reason, cleaning steps, disposal options, learning fact, safety note, sources, and quiz data. When an item has more than one official Macau channel (for example, batteries), the `disposalOptions` array lists each channel with its preparation steps, location, and source. The server drops any option whose source is not in the supplied source list, so a channel or location cannot be invented.
 
 `GET /api/health` reports whether the server is running and whether the AI key is configured. It does not reveal the key.
 
