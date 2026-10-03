@@ -2,8 +2,39 @@
   "sourceNote": "Starter guidance for prototyping. Verify each item against current official Macau collection guidance before public release.",
   "sources": [
     {
+      "id": "dspa-home",
       "name": "Macao SAR Government Environmental Protection Bureau (DSPA)",
-      "url": "https://www.dspa.gov.mo/"
+      "url": "https://www.dspa.gov.mo/",
+      "accessed": "2026-10-02",
+      "use": "official local authority starting point"
+    },
+    {
+      "id": "dspa-battery-intro",
+      "name": "DSPA - Macau Waste Battery Collection Scheme (overview)",
+      "url": "https://www.dspa.gov.mo/richtext2.aspx?a_id=101411",
+      "accessed": "2026-10-03",
+      "use": "battery collection scheme scope, more than 1,300 collection points across Macau, accepted battery types"
+    },
+    {
+      "id": "dspa-battery-faq",
+      "name": "DSPA - Waste Battery Collection Scheme (FAQ)",
+      "url": "https://www.dspa.gov.mo/richtext2.aspx?a_id=101413",
+      "accessed": "2026-10-03",
+      "use": "handling precautions for small batteries, power banks and broken batteries; routing for chargers and large batteries"
+    },
+    {
+      "id": "dspa-eee",
+      "name": "DSPA - Electronic and Electrical Equipment Recycling Programme",
+      "url": "https://www.dspa.gov.mo/richtext3.aspx?a_id=1506045567",
+      "accessed": "2026-10-03",
+      "use": "collection channel for chargers and electrical equipment"
+    },
+    {
+      "id": "dspa-eee-large",
+      "name": "DSPA - Large batteries (Electronic and Electrical Equipment Recycling Programme)",
+      "url": "https://www.dspa.gov.mo/richtext3.aspx?a_id=1654824890",
+      "accessed": "2026-10-03",
+      "use": "large battery types, mobile collection points, pretreatment workshop address"
     }
   ],
   "rules": [
@@ -13,7 +44,8 @@
       "examples": ["plastic bottle", "plastic container", "plastic packaging"],
       "recyclable": true,
       "localGuidance": "Only treat clean, empty plastic packaging as recyclable when it matches the current local collection guidance.",
-      "sourceNeeded": true
+      "sourceNeeded": true,
+      "sourceIds": ["dspa-home"]
     },
     {
       "category": "paper",
@@ -21,7 +53,8 @@
       "examples": ["cardboard box", "paper carton", "clean paper"],
       "recyclable": true,
       "localGuidance": "Only clean, dry paper and cardboard should match this stream. Used tissues, napkins, paper towels, wet paper, receipts, greasy paper, and food-soiled paper do not match this recyclable paper rule.",
-      "sourceNeeded": true
+      "sourceNeeded": true,
+      "sourceIds": ["dspa-home"]
     },
     {
       "category": "metal",
@@ -29,7 +62,8 @@
       "examples": ["aluminium can", "steel can", "metal container"],
       "recyclable": true,
       "localGuidance": "Empty and rinse metal packaging before following the current local collection guidance.",
-      "sourceNeeded": true
+      "sourceNeeded": true,
+      "sourceIds": ["dspa-home"]
     },
     {
       "category": "glass",
@@ -37,7 +71,71 @@
       "examples": ["glass bottle", "glass jar"],
       "recyclable": true,
       "localGuidance": "Handle glass carefully and follow the current local collection guidance for glass packaging.",
-      "sourceNeeded": true
+      "sourceNeeded": true,
+      "sourceIds": ["dspa-home"]
+    },
+    {
+      "category": "electronic",
+      "label": "Batteries and small electronic items",
+      "examples": [
+        "battery",
+        "AA battery",
+        "AAA battery",
+        "button cell",
+        "coin cell battery",
+        "rechargeable battery",
+        "lithium-ion battery",
+        "power bank",
+        "phone battery"
+      ],
+      "recyclable": true,
+      "localGuidance": "Macau runs a dedicated waste battery collection scheme with more than 1,300 collection points. Batteries must NOT be placed in the ordinary paper, plastic, metal or glass recycling bins. Take them to a battery collection point or the correct programme instead. Some items have more than one channel, and some need preparation before collection.",
+      "sourceNeeded": false,
+      "sourceIds": ["dspa-battery-intro", "dspa-battery-faq"],
+      "options": [
+        {
+          "title": "Small single-use and rechargeable batteries",
+          "guidance": "Remove the battery from the device first, then drop the battery into a DSPA battery collection box. Boxes are placed at more than 1,300 points across Macau, including schools, shop and institution outlets, residential and commercial buildings, public departments and public refuse rooms.",
+          "precautions": [
+            "Remove the battery from the device before recycling.",
+            "Do not mix batteries with ordinary paper, plastic, metal or glass recycling."
+          ],
+          "location": "DSPA battery collection boxes across Macau (more than 1,300 points)",
+          "sourceIds": ["dspa-battery-intro", "dspa-battery-faq"]
+        },
+        {
+          "title": "Rechargeable batteries and power banks (Li-ion, Li-polymer, NiMH, NiCd)",
+          "guidance": "Rechargeable batteries and power banks can go into a battery collection box, but the metal contacts and plugs must be covered first to prevent short circuits during storage and transport.",
+          "precautions": [
+            "Tape the metal contacts and all plugs before recycling.",
+            "Broken battery: cover the damaged area with tape and seal it inside a plastic bag.",
+            "Swollen power bank: tape the plugs and place it in a sealed bag before recycling."
+          ],
+          "location": "DSPA battery collection boxes across Macau",
+          "sourceIds": ["dspa-battery-faq", "dspa-battery-intro"]
+        },
+        {
+          "title": "Chargers are not batteries",
+          "guidance": "Chargers are not accepted in the battery collection box. Take chargers to a collection point of the Electronic and Electrical Equipment Recycling Programme.",
+          "precautions": ["Keep chargers separate from loose batteries."],
+          "location": "Electronic and Electrical Equipment Recycling Programme collection points (fixed or mobile)",
+          "sourceIds": ["dspa-battery-faq", "dspa-eee"]
+        },
+        {
+          "title": "Large batteries (car lead-acid, UPS, electric and hybrid vehicle)",
+          "guidance": "Large batteries are collected through the Electronic and Electrical Equipment Recycling Programme. Take them to a mobile collection point or to the programme's pretreatment workshop. There is no charge and no payment for the service.",
+          "precautions": ["Do not put large batteries into a small battery box."],
+          "location": "Mobile collection points, or the Electronic and Electrical Equipment pretreatment workshop, 218 North Frontoft, Taipa, Macau",
+          "sourceIds": ["dspa-battery-faq", "dspa-eee-large"]
+        },
+        {
+          "title": "Large quantities or institutional collections",
+          "guidance": "Institutions or groups that collect large quantities of waste batteries should contact the DSPA in advance to arrange collection.",
+          "precautions": [],
+          "location": "Contact the DSPA",
+          "sourceIds": ["dspa-battery-faq"]
+        }
+      ]
     },
     {
       "category": "general_waste",
@@ -45,7 +143,8 @@
       "examples": ["used tissue", "paper napkin", "paper towel", "wet paper", "food-soiled paper", "greasy paper", "receipt", "mixed material item"],
       "recyclable": false,
       "localGuidance": "Used tissues, napkins, paper towels, wet or greasy paper, food-soiled paper, receipts, and items that cannot be matched to a local recyclable stream should not be placed in a recycling container.",
-      "sourceNeeded": true
+      "sourceNeeded": true,
+      "sourceIds": ["dspa-home"]
     }
   ]
 }

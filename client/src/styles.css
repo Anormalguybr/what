@@ -133,6 +133,13 @@ h1, h2, h3, p { margin-top: 0; }
 .result-details .quiz-card { grid-column: 1 / -1; margin-top: 0; }
 .result-copy { color: #4d5b51; line-height: 1.65; }
 .steps-list { display: grid; gap: 9px; padding-left: 21px; color: #4d5b51; line-height: 1.5; }
+.disposal-options-card { grid-column: 1 / -1; }
+.disposal-list { display: grid; gap: 16px; margin: 10px 0 0; padding-left: 18px; }
+.disposal-option { display: grid; gap: 6px; color: #39483d; line-height: 1.55; }
+.disposal-option > strong { color: var(--ink); font-size: 0.9rem; }
+.disposal-precautions { display: grid; gap: 4px; margin: 2px 0 0; padding-left: 18px; color: #805b20; font-size: 0.82rem; }
+.disposal-location { color: var(--muted); font-size: 0.82rem; }
+.disposal-source { display: inline-flex; width: fit-content; align-items: center; gap: 5px; color: var(--blue); font-size: 0.78rem; font-weight: 700; }
 .safety-note { padding: 11px 12px; border-left: 3px solid #dfa254; border-radius: 0 12px 12px 0; color: #805b20; background: var(--peach); font-size: 0.82rem; line-height: 1.5; }
 .sources-block { display: grid; gap: 6px; margin-top: 20px; }
 .sources-block a { display: inline-flex; width: fit-content; align-items: center; gap: 5px; color: var(--blue); font-size: 0.82rem; font-weight: 700; }
