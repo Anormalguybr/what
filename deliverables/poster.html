@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>EcoScan AI — Poster (800 x 1100 mm)</title>
+<style>
+  /* Print size: 0.8 m x 1.1 m portrait */
+  @page { size: 800mm 1100mm; margin: 0; }
+
+  :root {
+    --primary: #246B4E;
+    --secondary: #69746C;
+    --accent: #CC8A3F;
+    --bg: #F4F7F3;
+    --text: #1C261F;
+    --line: #D9E2DA;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; background: #8a8f8b; }
+
+  .poster {
+    width: 800mm;
+    height: 1100mm;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    padding: 44mm 46mm;
+    display: flex;
+    flex-direction: column;
+    gap: 22mm;
+    overflow: hidden;
+  }
+
+  /* ---------- Header ---------- */
+  .header { border-bottom: 6mm solid var(--primary); padding-bottom: 16mm; }
+  .brandrow { display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 8mm; }
+  .logo {
+    width: 30mm; height: 30mm; border-radius: 8mm; background: var(--primary);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 20mm; font-weight: 800;
+  }
+  .brandname { font-size: 22mm; font-weight: 800; letter-spacing: -0.5mm; color: var(--primary); }
+  .kicker { font-size: 8mm; color: var(--secondary); font-weight: 600; text-align: right; line-height: 1.35; }
+
+  h1 {
+    font-size: 46mm;
+    line-height: 1.02;
+    margin: 14mm 0 6mm;
+    letter-spacing: -1.6mm;
+    font-weight: 900;
+  }
+  h1 .accent { color: var(--accent); }
+  .subtitle { font-size: 14mm; color: var(--secondary); font-weight: 500; max-width: 640mm; line-height: 1.35; }
+
+  h2 {
+    font-size: 15mm; color: var(--primary); margin: 0 0 7mm; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.6mm;
+  }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22mm; }
+  .row { display: flex; flex-direction: column; gap: 8mm; }
+
+  p, li { font-size: 10.5mm; line-height: 1.5; margin: 0; }
+  ul { margin: 0; padding-left: 13mm; }
+  li { margin-bottom: 4mm; }
+
+  .card {
+    background: #fff; border-radius: 10mm; padding: 16mm;
+    box-shadow: 0 4mm 10mm rgba(0,0,0,0.08);
+    border: 0.6mm solid var(--line);
+  }
+  .card.primary { background: var(--primary); color: #fff; }
+  .card.primary h2 { color: #fff; }
+  .card.accent { border-top: 4mm solid var(--accent); }
+
+  .steps { counter-reset: step; display: flex; flex-direction: column; gap: 9mm; }
+  .step { display: flex; gap: 10mm; align-items: flex-start; }
+  .stepnum {
+    flex: 0 0 auto; width: 18mm; height: 18mm; border-radius: 50%;
+    background: var(--primary); color: #fff; font-size: 10mm; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steptext strong { display: block; font-size: 12mm; margin-bottom: 1mm; }
+
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 16mm; }
+  .shot {
+    border: 1.2mm dashed var(--accent);
+    border-radius: 8mm;
+    background: #fff;
+    min-height: 120mm;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 12mm;
+    color: var(--accent); font-size: 9mm; font-weight: 600;
+  }
+  .shot.wide { grid-column: 1 / -1; min-height: 92mm; }
+
+  .pillrow { display: flex; flex-wrap: wrap; gap: 8mm; }
+  .pill {
+    font-size: 9mm; font-weight: 700; padding: 4mm 9mm; border-radius: 999px;
+    background: #E4EDE6; color: var(--primary);
+  }
+  .pill.accent { background: #F6E7D3; color: #8a5a1f; }
+
+  .flow { display: flex; align-items: center; justify-content: space-between; gap: 6mm; }
+  .flow .node {
+    flex: 1; text-align: center; font-size: 8.5mm; font-weight: 700; color: #fff;
+    background: var(--primary); border-radius: 6mm; padding: 10mm 5mm; line-height: 1.25;
+  }
+  .flow .node.alt { background: var(--accent); }
+  .flow .arrow { font-size: 12mm; color: var(--secondary); font-weight: 800; }
+
+  .footer {
+    margin-top: auto; border-top: 2mm solid var(--line); padding-top: 14mm;
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 20mm;
+  }
+  .team { font-size: 10mm; line-height: 1.5; }
+  .team strong { color: var(--primary); font-size: 11mm; }
+  .qrbox {
+    width: 62mm; height: 62mm; border: 1.2mm dashed var(--accent); border-radius: 6mm;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    color: var(--accent); font-size: 7.5mm; font-weight: 700; padding: 6mm;
+  }
+  .src { font-size: 8mm; color: var(--secondary); line-height: 1.4; }
+
+  @media screen {
+    body { display: flex; justify-content: center; padding: 20px; }
+  }
+</style>
+</head>
+<body>
+  <div class="poster">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="brandrow">
+        <div class="brand">
+          <div class="logo">&#9851;</div>
+          <div class="brandname">EcoScan AI</div>
+        </div>
+        <div class="kicker">
+          2026 Global Youth AI Future Innovation Competition<br />
+          Macau Secondary School Division &middot; AI for Social Innovation
+        </div>
+      </div>
+      <h1>See it. Sort it. <span class="accent">Learn why.</span></h1>
+      <p class="subtitle">
+        A phone camera identifies an everyday item, suggests how to sort it in Macau,
+        and explains the reason &mdash; turning a bin decision into a learning moment.
+      </p>
+    </header>
+
+    <!-- PROBLEM + SOLUTION -->
+    <section class="cols">
+      <div class="card">
+        <h2>The Problem</h2>
+        <p>
+          Recycling rules are local and depend on condition: clean paper can be recycled,
+          a greasy box cannot, and a used tissue is never paper recycling. One wrong item
+          can contaminate a whole bin &mdash; but students rarely see the reason behind the rule.
+        </p>
+      </div>
+      <div class="card">
+        <h2>Our Solution</h2>
+        <p>
+          Take or upload a photo. EcoScan AI identifies the object, gives a cautious
+          recycling category based on Macau guidance, and shows an English reason,
+          cleaning steps, a learning fact, and a quick quiz.
+        </p>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section>
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="step"><div class="stepnum">1</div><div class="steptext"><strong>Capture or upload</strong>Use the phone camera or upload a JPEG, PNG, or WebP image.</div></div>
+        <div class="step"><div class="stepnum">2</div><div class="steptext"><strong>Preview and confirm</strong>See the image before analysis &mdash; the user stays in control.</div></div>
+        <div class="step"><div class="stepnum">3</div><div class="steptext"><strong>Real AI analysis</strong>The server calls a real vision AI model and validates a fixed set of fields.</div></div>
+        <div class="step"><div class="stepnum">4</div><div class="steptext"><strong>Clear, cautious result</strong>Item, category, recyclable status, confidence, and the decision reason.</div></div>
+        <div class="step"><div class="stepnum">5</div><div class="steptext"><strong>Learn and check</strong>English cleaning steps, a learning fact, and a one-question knowledge check.</div></div>
+      </div>
+    </section>
+
+    <!-- FLOW -->
+    <section>
+      <h2>System flow</h2>
+      <div class="flow">
+        <div class="node">Phone camera<br />React UI</div>
+        <div class="arrow">&rarr;</div>
+        <div class="node">Node.js server<br />validates + keeps key private</div>
+        <div class="arrow">&rarr;</div>
+        <div class="node alt">DeepSeek<br />deepseek-flash vision</div>
+        <div class="arrow">&rarr;</div>
+        <div class="node">Fixed JSON<br />result + quiz</div>
+      </div>
+    </section>
+
+    <!-- AI METHOD + SCREENSHOTS -->
+    <section class="cols">
+      <div class="row">
+        <div class="card primary">
+          <h2>The AI Method</h2>
+          <ul>
+            <li>Real vision model: DeepSeek <strong>deepseek-flash</strong> (image input supported).</li>
+            <li>One model identifies the item and writes the English reason and quiz.</li>
+            <li>A strict prompt applies only Macau guidance &mdash; no other region's rules.</li>
+            <li>Uncertain or unmatched items return <strong>unknown</strong>. It never guesses.</li>
+            <li>The API key stays on the server; images are processed in memory.</li>
+          </ul>
+        </div>
+        <div class="card accent">
+          <h2>Why it is different</h2>
+          <ul>
+            <li>Built on Macau guidance, citing the DSPA.</li>
+            <li>Teaches the "why", not just the label.</li>
+            <li>Honest by design: shows uncertainty and flags unconfirmed rules.</li>
+            <li>Student-built and fully explainable.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="shots">
+        <div class="shot">[ Screenshot: capture screen<br />Insert real app photo ]</div>
+        <div class="shot">[ Screenshot: result screen<br />Insert real app photo ]</div>
+        <div class="shot wide">[ Wide screenshot: result details + knowledge check quiz<br />Insert real app photo ]</div>
+      </div>
+    </section>
+
+    <!-- SDG + DATA -->
+    <section class="cols">
+      <div class="card">
+        <h2>Global Goals</h2>
+        <div class="pillrow">
+          <span class="pill">SDG 12 &middot; Responsible Consumption</span>
+          <span class="pill">SDG 13 &middot; Climate Action</span>
+          <span class="pill">SDG 4 &middot; Quality Education</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Data &amp; Honesty</h2>
+        <p class="src">
+          Local source: Macao SAR Government Environmental Protection Bureau (DSPA),
+          <br />https://www.dspa.gov.mo/ &mdash; accessed 2026-10-02.
+          Rules still to be confirmed are marked in the app. No unverified carbon
+          numbers are shown.
+        </p>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="team">
+        <strong>[Team name]</strong><br />
+        [Member A] &middot; [Member B] &middot; [Member C]<br />
+        [School name] &middot; github.com/Anormalguybr/what
+      </div>
+      <div class="qrbox">QR code added only after the final URL is verified to work</div>
+    </footer>
+
+  </div>
+</body>
+</html>
