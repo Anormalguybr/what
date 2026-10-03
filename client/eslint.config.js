@@ -16,6 +16,7 @@ export default [
         window: "readonly",
         document: "readonly",
         URL: "readonly",
+        AbortController: "readonly",
         File: "readonly",
         FormData: "readonly",
         navigator: "readonly",

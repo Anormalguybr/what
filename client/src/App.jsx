@@ -32,6 +32,7 @@ export default function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cameraStreamRef = useRef(null);
+  const analysisRequestRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -48,6 +49,8 @@ export default function App() {
   }, [screen]);
 
   useEffect(() => () => stopCamera(), []);
+
+  useEffect(() => () => analysisRequestRef.current?.abort(), []);
 
   function selectFile(nextFile) {
     setError("");
@@ -94,6 +97,9 @@ export default function App() {
       return;
     }
 
+    analysisRequestRef.current?.abort();
+    const request = new AbortController();
+    analysisRequestRef.current = request;
     setError("");
     setResult(null);
     setQuizChoice(null);
@@ -104,16 +110,27 @@ export default function App() {
     body.append("image", file);
 
     try {
-      const response = await fetch(`${API_URL}/api/classify`, { method: "POST", body });
+      const response = await fetch(`${API_URL}/api/classify`, { method: "POST", body, signal: request.signal });
       const payload = await response.json().catch(() => null);
+      if (request.signal.aborted || analysisRequestRef.current !== request) return;
       if (!response.ok) {
         throw new Error(payload?.message || "The image could not be classified right now.");
+      }
+      if (!payload || typeof payload.itemName !== "string" ||
+          typeof payload.category !== "string" || !Number.isFinite(payload.confidence) ||
+          payload.confidence < 0 || payload.confidence > 1 ||
+          !Array.isArray(payload.cleaningSteps) ||
+          ![true, false, null].includes(payload.recyclable)) {
+        throw new Error("The service returned an invalid result. Please try again.");
       }
       setResult(payload);
       setScreen("result");
     } catch (requestError) {
+      if (request.signal.aborted || analysisRequestRef.current !== request) return;
       setError(requestError.message || "The network connection failed. Please try again.");
       setScreen("capture");
+    } finally {
+      if (analysisRequestRef.current === request) analysisRequestRef.current = null;
     }
   }
 
@@ -181,6 +198,8 @@ export default function App() {
   }
 
   function resetScan() {
+    analysisRequestRef.current?.abort();
+    analysisRequestRef.current = null;
     setFile(null);
     setResult(null);
     setError("");
@@ -196,6 +215,8 @@ export default function App() {
   }
 
   function backToCamera() {
+    analysisRequestRef.current?.abort();
+    analysisRequestRef.current = null;
     setError("");
     setScreen("capture");
   }
@@ -357,9 +378,10 @@ LoadingScreen.propTypes = {
 
 function ResultScreen({ result, quizChoice, quizSubmitted, onChoice, onSubmit, onBack, onReset }) {
   const [showDetails, setShowDetails] = useState(false);
+  useEffect(() => setShowDetails(false), [result]);
   if (!result) return null;
   const isLowConfidence = result.confidence < 0.65;
-  const confidenceLabel = `${Math.round(result.confidence * 100)}% confidence`;
+  const confidencePercent = Math.round(result.confidence * 100);
 
   return (
     <section className="result-screen" aria-labelledby="result-title">
@@ -380,22 +402,28 @@ function ResultScreen({ result, quizChoice, quizSubmitted, onChoice, onSubmit, o
             <div className="result-sort-row">
               <span className={`category-badge category-${result.category}`}>{formatCategory(result.category)}</span>
               <span className={`recycle-status ${result.recyclable === null ? "is-unknown" : result.recyclable ? "is-recyclable" : "is-not-recyclable"}`}>
-                {result.recyclable === null ? "Check locally" : result.recyclable ? "Recyclable" : "General waste"}
+                {result.recyclable === null ? "Check locally" : result.recyclable ? "Recyclable" : "Not recyclable"}
               </span>
             </div>
-            <div className="confidence-row"><span>{confidenceLabel}</span><span className="confidence-track"><span style={{ width: `${Math.round(result.confidence * 100)}%` }} /></span></div>
+            <div className="confidence-row" title="The model's confidence estimate, not measured accuracy.">
+              <span>{confidencePercent}% AI confidence</span>
+              <span className="confidence-track" role="meter" aria-label="AI confidence estimate" aria-valuemin={0} aria-valuemax={100} aria-valuenow={confidencePercent}>
+                <span style={{ width: `${confidencePercent}%` }} />
+              </span>
+            </div>
             {(isLowConfidence || result.category === "unknown" || result.sourceNeeded) && <p className="notice-text">Use this as a learning aid and check the current local collection rule before disposal.</p>}
-            <button className="more-info-button" type="button" aria-expanded={showDetails} onClick={() => setShowDetails((current) => !current)}>
+            <div className="summary-trace">
+              <div className="result-label">Decision trace</div>
+              <p className="result-copy">{result.reason || "No explanation was returned."}</p>
+            </div>
+            <button className="more-info-button" type="button" aria-expanded={showDetails} aria-controls="result-details" onClick={() => setShowDetails((current) => !current)}>
               {showDetails ? "Hide information" : "More information"} <ChevronDown className={showDetails ? "is-open" : ""} size={16} aria-hidden="true" />
             </button>
           </article>
         </div>
 
-        {showDetails && (
-          <div className="result-details">
+          <div id="result-details" className="result-details" hidden={!showDetails}>
             <article className="result-detail-card">
-              <div className="result-label">Decision trace</div>
-              <p className="result-copy">{result.reason || "No explanation was returned."}</p>
               <div className="result-label">Cleaning protocol</div>
               {result.cleaningSteps.length ? <ol className="steps-list">{result.cleaningSteps.map((step) => <li key={step}>{step}</li>)}</ol> : <p className="muted-copy">No cleaning steps were returned.</p>}
             </article>
@@ -407,7 +435,6 @@ function ResultScreen({ result, quizChoice, quizSubmitted, onChoice, onSubmit, o
             </article>
             {result.quiz && <Quiz quiz={result.quiz} choice={quizChoice} submitted={quizSubmitted} onChoice={onChoice} onSubmit={onSubmit} />}
           </div>
-        )}
       </div>
     </section>
   );

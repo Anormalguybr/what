@@ -115,15 +115,21 @@ h1, h2, h3, p { margin-top: 0; }
 .is-recyclable { color: var(--green); }
 .is-not-recyclable { color: var(--red); }
 .is-unknown { color: var(--amber); }
-.confidence-row { justify-content: flex-start; color: var(--muted); font-size: 0.76rem; }
-.confidence-track { width: 100px; height: 8px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 999px; background: #f2f5f1; }
-.confidence-track span { display: block; height: 100%; border-radius: inherit; background: var(--green); }
+.confidence-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px 14px; color: var(--muted); font-size: 0.82rem; }
+.confidence-track { display: block; flex: 0 0 128px; width: 128px; height: 8px; min-width: 128px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 999px; background: #f2f5f1; }
+.confidence-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--green); transition: width 250ms ease; }
 .notice-text { margin: 18px 0 0; padding-top: 15px; border-top: 1px solid var(--line); color: var(--amber); font-size: 0.8rem; line-height: 1.5; }
+.summary-trace { margin-top: 19px; padding-top: 16px; border-top: 1px solid var(--line); }
+.summary-trace .result-label { margin-bottom: 7px; }
+.summary-trace .result-copy { margin-bottom: 0; font-size: 0.91rem; }
 .more-info-button { display: inline-flex; min-height: 42px; align-items: center; gap: 7px; margin-top: 22px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--green-dark); background: #fff; font-size: 0.8rem; font-weight: 800; }
 .more-info-button:hover { border-color: var(--green); background: var(--mint); }
 .more-info-button svg { transition: transform 180ms ease; }
 .more-info-button svg.is-open { transform: rotate(180deg); }
 .result-details { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.result-details[hidden] { display: none; }
+.result-details > *, .result-intro > * { min-width: 0; }
+.result-content { overflow-wrap: anywhere; }
 .result-details .quiz-card { grid-column: 1 / -1; margin-top: 0; }
 .result-copy { color: #4d5b51; line-height: 1.65; }
 .steps-list { display: grid; gap: 9px; padding-left: 21px; color: #4d5b51; line-height: 1.5; }
