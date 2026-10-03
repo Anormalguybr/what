@@ -26,7 +26,7 @@ A phone camera recognises an everyday item, and a real AI model explains how to 
 | On-screen student | [Teammate A] | Handles the phone; no face needed (hands + phone only is fine) |
 | App operator | [Teammate B] | Runs the live scan; watches for network/API issues |
 
-**Physical props:** one clean, empty plastic bottle; one aluminium can; one used tissue (for the "not recyclable" case); a table; a plain background.
+**Physical props:** one clean, empty plastic bottle; one aluminium can; one used AA battery (for the multi-option shot); one used tissue (for the "not recyclable" case); a table; a plain background.
 
 **Digital props:** deployed frontend URL, a phone, a laptop for the fallback clip.
 
@@ -84,6 +84,8 @@ A phone camera recognises an everyday item, and a real AI model explains how to 
 | **Visual** | Result screen. Zoom on the category badge, the recyclable status, and the confidence meter. |
 | **On screen text** | "Item · Category · Confidence · Why" |
 | **Narration** | "Here is the result. The app shows the item name, a suggested category, whether it is recyclable, and a confidence estimate. If the model is not sure, it says 'unknown' and asks you to check — it does not guess. Below is the decision trace: the reason for the suggestion, based only on our Macau guidance data." |
+
+> **Optional extra shot (adds ~15 s):** scan a battery to show the multi-option result — each official Macau channel with its preparation steps, location, and source. If you add this shot, trim Scene 3 to stay under five minutes.
 
 ### Scene 6 — Education: the quiz (2:30–3:00)
 

@@ -32,7 +32,7 @@ EcoScan AI is built around a single learning loop: **see an object → get a cau
 1. **Capture or upload.** The user takes a photo with the phone camera or uploads an existing image (JPEG, PNG, or WebP).
 2. **Preview and confirm.** The selected image is shown before analysis, so the user stays in control.
 3. **AI analysis.** The image is sent to the server, which calls a real vision AI model and returns a fixed set of fields.
-4. **Clear result.** The app shows the item name, suggested category, whether it is recyclable, a confidence estimate, and the decision reason.
+4. **Clear result.** The app shows the item name, suggested category, whether it is recyclable, a confidence estimate, the decision reason, and — when an item has several official Macau channels such as batteries — each disposal option with its preparation steps, location, and source.
 5. **Learning support.** Cleaning steps, an environmental learning fact, a safety note, and a short quiz with feedback.
 6. **Uncertainty handling.** When the model is not sure, or no local rule matches, the app returns **unknown** and asks the user to check current local guidance. It does not guess.
 7. **Responsive, English interface** with explicit loading, success, unknown, low-confidence, network, and error states.
@@ -44,7 +44,7 @@ EcoScan AI uses a real, hosted vision-language model rather than fixed rules pre
 - **Provider and model:** DeepSeek, via the OpenAI-compatible endpoint `https://api.deepseek.com`, using the `deepseek-flash` model (DeepSeek-V4.1-Flash), which accepts image input.
 - **Image understanding:** the photo is sent as a base64 image to the model, which identifies the visible item and its material and condition.
 - **Prompt design:** a carefully written system prompt instructs the model to return English JSON only, to apply **only** the supplied Macau starter guidance, to treat used tissues, wet or greasy paper, and food-soiled paper as general waste, and to return `unknown` with a low confidence rather than guess.
-- **Fixed response contract:** the server validates the model's JSON against required fields (`itemName`, `category`, `recyclable`, `confidence`, `reason`, `cleaningSteps`, `learningFact`, `safetyNote`, `sourceNeeded`, `sources`, `quiz`) before sending it to the client.
+- **Fixed response contract:** the server validates the model's JSON against required fields (`itemName`, `category`, `recyclable`, `confidence`, `reason`, `cleaningSteps`, `disposalOptions`, `learningFact`, `safetyNote`, `sourceNeeded`, `sources`, `quiz`) before sending it to the client, and it drops any disposal option whose source is not on the approved list.
 - **Server-side key:** the API key lives only in the server environment variables. It is never exposed to the browser.
 
 One model performs both the image recognition and the English explanation, which keeps the system small enough for a student team to understand, test, and explain.
