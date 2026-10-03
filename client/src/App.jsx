@@ -116,14 +116,11 @@ export default function App() {
       if (!response.ok) {
         throw new Error(payload?.message || "The image could not be classified right now.");
       }
-      if (!payload || typeof payload.itemName !== "string" ||
-          typeof payload.category !== "string" || !Number.isFinite(payload.confidence) ||
-          payload.confidence < 0 || payload.confidence > 1 ||
-          !Array.isArray(payload.cleaningSteps) ||
-          ![true, false, null].includes(payload.recyclable)) {
+      const normalizedPayload = normalizeClassification(payload);
+      if (!normalizedPayload) {
         throw new Error("The service returned an invalid result. Please try again.");
       }
-      setResult(payload);
+      setResult(normalizedPayload);
       setScreen("result");
     } catch (requestError) {
       if (request.signal.aborted || analysisRequestRef.current !== request) return;
@@ -255,6 +252,23 @@ export default function App() {
       )}
     </main>
   );
+}
+
+function normalizeClassification(payload) {
+  if (!payload || typeof payload.itemName !== "string" || typeof payload.category !== "string") return null;
+  const confidence = Number(payload.confidence);
+  if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1 || !Array.isArray(payload.cleaningSteps)) return null;
+  if (![true, false, null].includes(payload.recyclable) && payload.recyclable !== "true" && payload.recyclable !== "false") return null;
+  const recyclable = payload.recyclable === "true" ? true : payload.recyclable === "false" ? false : payload.recyclable;
+  return {
+    ...payload,
+    itemName: payload.itemName.trim(),
+    confidence,
+    recyclable,
+    cleaningSteps: payload.cleaningSteps.filter((step) => typeof step === "string").slice(0, 4),
+    sources: Array.isArray(payload.sources) ? payload.sources : [],
+    quiz: payload.quiz && typeof payload.quiz === "object" ? payload.quiz : null
+  };
 }
 
 function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cameraInputRef, uploadInputRef, videoRef, canvasRef, onFile, onAnalyze, onReset, onStartCamera, onCaptureFrame }) {

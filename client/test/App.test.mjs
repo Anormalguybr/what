@@ -117,3 +117,13 @@ test("unknown results never display a definitive recyclable status", async () =>
   assert.equal(document.querySelector(".recycle-status").textContent, "Check locally");
   assert.equal(document.querySelector('[role="meter"]').getAttribute("aria-valuenow"), "0");
 });
+
+test("normalizes provider values serialized as strings", async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({ ...classification, confidence: "0.74", recyclable: "true" })
+  });
+  await scan();
+  assert.equal(document.querySelector(".result-screen").querySelector(".confidence-row").textContent.includes("74%"), true);
+  assert.equal(document.querySelector(".recycle-status").textContent, "Recyclable");
+});
