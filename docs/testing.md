@@ -20,6 +20,7 @@ npm --prefix client run build
 | Image larger than configured limit | `IMAGE_TOO_LARGE` | To run locally |
 | No server API key | `AI_NOT_CONFIGURED` | To run locally |
 | Valid image and valid key | Fixed classification JSON | Requires approved key and test image |
+| Battery image | `category: electronic` with `disposalOptions` (each with a source) | Verified live on 2026-10-03 with a synthetic image |
 | Provider timeout | `AI_TIMEOUT` | Requires controlled provider test |
 | Unknown or blurry item | `category: unknown` | Requires approved test image |
 
@@ -27,7 +28,7 @@ npm --prefix client run build
 
 Recorded on 2026-10-03 in the local development environment:
 
-- `npm --prefix server test`: 7 tests passed.
+- `npm --prefix server test`: 10 tests passed.
 - `npm --prefix server run lint`: passed.
 - `npm --prefix client run lint`: passed.
 - `npm --prefix client run build`: passed.
@@ -36,6 +37,8 @@ Recorded on 2026-10-03 in the local development environment:
 Live provider classification and classroom user testing remain pending because no live key or participant results are recorded.
 
 Live smoke check on 2026-10-03 with the anonymous crumpled-paper reference image returned `general_waste`, `recyclable: false`, and `confidence: 0.68` after the conservative paper safeguard.
+
+Live smoke check on 2026-10-03 with a synthetic AA battery image returned `category: electronic`, `recyclable: true`, `confidence: 0.95`, and five `disposalOptions`, each carrying an official DSPA source URL. A synthetic apple image still returned `unknown` with an empty `disposalOptions` array, confirming the multi-option change did not weaken the unknown path.
 
 ## Education test
 

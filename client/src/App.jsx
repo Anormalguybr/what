@@ -458,6 +458,30 @@ function ResultScreen({ result, previewUrl, quizChoice, quizSubmitted, onChoice,
         </div>
 
           <div id="result-details" className="result-details" hidden={!showDetails}>
+            {result.disposalOptions?.length > 0 && (
+              <article className="result-detail-card disposal-options-card">
+                <div className="result-label">Disposal options</div>
+                <ol className="disposal-list">
+                  {result.disposalOptions.map((option) => (
+                    <li className="disposal-option" key={option.title}>
+                      <strong>{option.title}</strong>
+                      {option.guidance && <p className="result-copy">{option.guidance}</p>}
+                      {option.precautions?.length > 0 && (
+                        <ul className="disposal-precautions">
+                          {option.precautions.map((step) => <li key={step}>{step}</li>)}
+                        </ul>
+                      )}
+                      {option.location && <p className="disposal-location"><strong>Where:</strong> {option.location}</p>}
+                      {option.source && (
+                        <a className="disposal-source" href={option.source.url} target="_blank" rel="noreferrer">
+                          {option.source.name} <ExternalLink size={13} aria-hidden="true" />
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </article>
+            )}
             <article className="result-detail-card">
               <div className="result-label">Cleaning protocol</div>
               {result.cleaningSteps.length ? <ol className="steps-list">{result.cleaningSteps.map((step) => <li key={step}>{step}</li>)}</ol> : <p className="muted-copy">No cleaning steps were returned.</p>}
@@ -483,6 +507,15 @@ ResultScreen.propTypes = {
     confidence: PropTypes.number.isRequired,
     reason: PropTypes.string,
     cleaningSteps: PropTypes.arrayOf(PropTypes.string).isRequired,
+    disposalOptions: PropTypes.arrayOf(
+      PropTypes.shape({
+        title: PropTypes.string,
+        guidance: PropTypes.string,
+        precautions: PropTypes.arrayOf(PropTypes.string),
+        location: PropTypes.string,
+        source: PropTypes.shape({ name: PropTypes.string, url: PropTypes.string })
+      })
+    ),
     learningFact: PropTypes.string,
     safetyNote: PropTypes.string,
     sourceNeeded: PropTypes.bool,

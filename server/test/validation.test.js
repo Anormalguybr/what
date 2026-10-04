@@ -115,3 +115,49 @@ test("recovers clean paper when the model contradicts its own clean evidence", (
   assert.equal(result.recyclable, true);
   assert.equal(result.confidence, 0.59);
 });
+
+test("normalizes disposal options and keeps only approved sources", () => {
+  const result = validateClassification(
+    {
+      itemName: "AA battery",
+      category: "electronic",
+      recyclable: true,
+      confidence: 0.9,
+      reason: "Batteries have their own collection scheme.",
+      cleaningSteps: [],
+      disposalOptions: [
+        {
+          title: "Battery collection box",
+          guidance: "Remove the battery and drop it into a collection box.",
+          precautions: ["Do not mix with ordinary recycling.", 42],
+          location: "DSPA collection points",
+          source: { name: "DSPA battery FAQ", url: "https://www.dspa.gov.mo/richtext2.aspx?a_id=101413" }
+        },
+        {
+          title: "Untrusted channel",
+          guidance: "This option should lose its source.",
+          precautions: [],
+          location: "Unknown",
+          source: { name: "Bad", url: "https://untrusted.example/" }
+        }
+      ],
+      learningFact: "",
+      safetyNote: "",
+      sourceNeeded: false,
+      sources: [],
+      quiz: null
+    },
+    [{ name: "DSPA battery FAQ", url: "https://www.dspa.gov.mo/richtext2.aspx?a_id=101413" }]
+  );
+
+  assert.equal(result.disposalOptions.length, 2);
+  assert.equal(result.disposalOptions[0].title, "Battery collection box");
+  assert.deepEqual(result.disposalOptions[0].precautions, ["Do not mix with ordinary recycling."]);
+  assert.equal(result.disposalOptions[0].source.url, "https://www.dspa.gov.mo/richtext2.aspx?a_id=101413");
+  assert.equal(result.disposalOptions[1].source, null);
+});
+
+test("returns an empty disposal options array when none are supplied", () => {
+  const result = validateClassification({ itemName: "Item", category: "paper", confidence: 0.6 });
+  assert.deepEqual(result.disposalOptions, []);
+});

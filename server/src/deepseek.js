@@ -37,7 +37,9 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
       body: JSON.stringify({
         model,
         response_format: { type: "json_object" },
-        max_tokens: 1200,
+        thinking: { type: "disabled" },
+        thinking: { type: "disabled" },
+        max_tokens: 2000,
         messages: [
           { role: "system", content: buildSystemPrompt(rules) },
           {
@@ -60,19 +62,24 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
     }
 
     const payload = await response.json();
-    const rawContent = payload?.choices?.[0]?.message?.content;
+    const choice = payload?.choices?.[0];
+    const rawContent = choice?.message?.content;
     const content = Array.isArray(rawContent)
       ? rawContent.filter((part) => part && typeof part.text === "string").map((part) => part.text).join("\n")
       : rawContent;
     if (typeof content !== "string" || !content.trim()) {
-      const error = new Error("DeepSeek returned an empty response.");
+      const error = new Error(
+        choice?.finish_reason === "length"
+          ? "DeepSeek stopped before returning a result because it reached the token limit."
+          : "DeepSeek returned an empty response."
+      );
       error.code = "AI_EMPTY_RESPONSE";
       throw error;
     }
 
     let parsed;
     try {
-      parsed = JSON.parse(stripJsonFence(content));
+      parsed = parseJsonContent(content);
     } catch (error) {
       const jsonError = new Error("The AI response was not valid JSON.");
       jsonError.code = "AI_INVALID_JSON";
@@ -100,8 +107,10 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
   }
 }
 
-function stripJsonFence(content) {
-  const trimmed = content.trim();
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return fenced ? fenced[1].trim() : trimmed;
+function parseJsonContent(content) {
+  const cleaned = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
+  return JSON.parse(cleaned);
 }

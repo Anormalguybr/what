@@ -42,6 +42,7 @@ export function validateClassification(value, allowedSources = []) {
     confidence,
     reason: typeof value.reason === "string" ? value.reason.trim().slice(0, 600) : "",
     cleaningSteps,
+    disposalOptions: normalizeDisposalOptions(value.disposalOptions, allowedSources),
     learningFact: typeof value.learningFact === "string" ? value.learningFact.trim().slice(0, 400) : "",
     safetyNote: typeof value.safetyNote === "string" ? value.safetyNote.trim().slice(0, 400) : "",
     sourceNeeded: sources.length === 0 || value.sourceNeeded !== false,
@@ -109,4 +110,30 @@ function normalizeQuiz(quiz) {
     answerIndex,
     explanation: typeof quiz.explanation === "string" ? quiz.explanation.trim().slice(0, 300) : ""
   };
+}
+
+function normalizeDisposalOptions(options, allowedSources) {
+  if (!Array.isArray(options)) return [];
+  return options
+    .filter((option) => option && typeof option === "object" && typeof option.title === "string" && option.title.trim())
+    .slice(0, 5)
+    .map((option) => {
+      const precautions = Array.isArray(option.precautions)
+        ? option.precautions.filter((step) => typeof step === "string" && step.trim()).slice(0, 4)
+        : [];
+      const source =
+        option.source &&
+        typeof option.source.name === "string" &&
+        typeof option.source.url === "string" &&
+        isAllowedSource(option.source, allowedSources)
+          ? { name: option.source.name, url: option.source.url }
+          : null;
+      return {
+        title: option.title.trim().slice(0, 160),
+        guidance: typeof option.guidance === "string" ? option.guidance.trim().slice(0, 500) : "",
+        precautions,
+        location: typeof option.location === "string" ? option.location.trim().slice(0, 240) : "",
+        source
+      };
+    });
 }
