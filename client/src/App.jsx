@@ -37,6 +37,7 @@ export default function App() {
   const canvasRef = useRef(null);
   const cameraStreamRef = useRef(null);
   const cameraStartRef = useRef(null);
+  const cameraRequestIdRef = useRef(0);
   const analysisRequestRef = useRef(null);
 
   useEffect(() => {
@@ -60,6 +61,7 @@ export default function App() {
       return;
     }
 
+    const requestId = ++cameraRequestIdRef.current;
     try {
       stopCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -70,6 +72,10 @@ export default function App() {
           height: { ideal: 1080 }
         }
       });
+      if (requestId !== cameraRequestIdRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       cameraStreamRef.current = stream;
       setCameraActive(true);
       requestAnimationFrame(() => {
@@ -106,6 +112,7 @@ export default function App() {
     setQuizSubmitted(false);
     setScreen("capture");
     setCameraError("");
+    cameraRequestIdRef.current += 1;
     stopCamera();
 
     if (!nextFile) return;
@@ -158,7 +165,7 @@ export default function App() {
     const timeoutId = window.setTimeout(() => {
       request.timedOut = true;
       request.abort();
-    }, 50_000);
+    }, 95_000);
 
     try {
       const response = await fetch(`${API_URL}/api/classify`, { method: "POST", body, signal: request.signal });

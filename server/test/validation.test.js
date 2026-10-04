@@ -96,7 +96,7 @@ test("keeps clean paper recyclable when contamination only appears in conditiona
   assert.equal(result.confidence, 0.82);
 });
 
-test("recovers clean paper when the model contradicts its own clean evidence", () => {
+test("keeps a contradictory general-waste decision conservative", () => {
   const result = validateClassification({
     itemName: "Printed paper worksheet",
     category: "general_waste",
@@ -111,8 +111,8 @@ test("recovers clean paper when the model contradicts its own clean evidence", (
     quiz: null
   });
 
-  assert.equal(result.category, "paper");
-  assert.equal(result.recyclable, true);
+  assert.equal(result.category, "general_waste");
+  assert.equal(result.recyclable, false);
   assert.equal(result.confidence, 0.59);
 });
 

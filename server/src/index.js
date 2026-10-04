@@ -63,15 +63,19 @@ app.post("/api/classify", upload.single("image"), async (request, response) => {
       AI_RATE_LIMITED: 429,
       AI_TIMEOUT: 504,
       AI_PROVIDER_ERROR: 502,
+      AI_NETWORK_ERROR: 502,
+      AI_TRUNCATED_RESPONSE: 502,
       AI_EMPTY_RESPONSE: 502,
       AI_INVALID_JSON: 502,
       AI_INVALID_RESPONSE: 502
     };
     const status = statusByCode[error.code] || 502;
+    // Never log the provider body, key, prompt, or uploaded image.
+    console.warn("AI classification failed", { code: error.code || "AI_REQUEST_FAILED", providerStatus: error.providerStatus });
     return response.status(status).json({
       error: error.code || "AI_REQUEST_FAILED",
       message: publicErrorMessage(error.code),
-      retryable: ["AI_RATE_LIMITED", "AI_TIMEOUT", "AI_PROVIDER_ERROR", "AI_EMPTY_RESPONSE", "AI_INVALID_JSON", "AI_INVALID_RESPONSE"].includes(error.code)
+      retryable: error.retryable !== false && ["AI_RATE_LIMITED", "AI_TIMEOUT", "AI_PROVIDER_ERROR", "AI_NETWORK_ERROR", "AI_EMPTY_RESPONSE", "AI_INVALID_JSON", "AI_INVALID_RESPONSE", "AI_TRUNCATED_RESPONSE"].includes(error.code)
     });
   }
 });
@@ -99,6 +103,8 @@ function publicErrorMessage(code) {
     AI_RATE_LIMITED: "The AI service is busy. Please try again shortly.",
     AI_TIMEOUT: "The AI service took too long to respond. Please try again.",
     AI_PROVIDER_ERROR: "The AI service returned an error. Please try again later.",
+    AI_NETWORK_ERROR: "The server could not reach the AI service. Please try again.",
+    AI_TRUNCATED_RESPONSE: "The AI result was incomplete. Please try again.",
     AI_EMPTY_RESPONSE: "The AI service returned no usable result.",
     AI_INVALID_JSON: "The AI service returned an invalid result. Please try again.",
     AI_INVALID_RESPONSE: "The AI service returned an incomplete result. Please try again."

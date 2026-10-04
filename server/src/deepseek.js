@@ -1,19 +1,19 @@
 import { buildSystemPrompt } from "./prompt.js";
 import { validateClassification } from "./validation.js";
 
-export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules }) {
+export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules, timeoutMs = 45_000 }) {
   if (!apiKey) {
     const error = new Error("DEEPSEEK_API_KEY is not configured on the server.");
     error.code = "AI_NOT_CONFIGURED";
     throw error;
   }
 
-  const retryableCodes = new Set(["AI_EMPTY_RESPONSE", "AI_RATE_LIMITED", "AI_TIMEOUT", "AI_PROVIDER_ERROR", "AI_INVALID_JSON", "AI_INVALID_RESPONSE"]);
+  const retryableCodes = new Set(["AI_EMPTY_RESPONSE", "AI_RATE_LIMITED", "AI_TIMEOUT", "AI_PROVIDER_ERROR", "AI_NETWORK_ERROR", "AI_INVALID_JSON", "AI_INVALID_RESPONSE", "AI_TRUNCATED_RESPONSE"]);
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return await requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules });
+      return await requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules, timeoutMs });
     } catch (error) {
-      if (!retryableCodes.has(error.code) || attempt === 1) {
+      if (!retryableCodes.has(error.code) || error.retryable === false || attempt === 1) {
         throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, 250));
@@ -21,9 +21,9 @@ export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, base
   }
 }
 
-async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules }) {
+async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules, timeoutMs }) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 45_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const dataUrl = `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
 
   try {
@@ -37,7 +37,6 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
       body: JSON.stringify({
         model,
         response_format: { type: "json_object" },
-        thinking: { type: "disabled" },
         thinking: { type: "disabled" },
         max_tokens: 2000,
         messages: [
@@ -54,15 +53,20 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
     });
 
     if (!response.ok) {
-      const detail = await response.text();
       const error = new Error(`DeepSeek returned HTTP ${response.status}.`);
       error.code = response.status === 429 ? "AI_RATE_LIMITED" : "AI_PROVIDER_ERROR";
-      error.detail = detail.slice(0, 500);
+      error.retryable = response.status === 429 || response.status >= 500;
+      error.providerStatus = response.status;
       throw error;
     }
 
     const payload = await response.json();
     const choice = payload?.choices?.[0];
+    if (choice?.finish_reason === "length") {
+      const error = new Error("The AI result was cut off by the token limit.");
+      error.code = "AI_TRUNCATED_RESPONSE";
+      throw error;
+    }
     const rawContent = choice?.message?.content;
     const content = Array.isArray(rawContent)
       ? rawContent.filter((part) => part && typeof part.text === "string").map((part) => part.text).join("\n")
@@ -100,6 +104,11 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
       const timeoutError = new Error("The AI request timed out.");
       timeoutError.code = "AI_TIMEOUT";
       throw timeoutError;
+    }
+    if (error instanceof SyntaxError) {
+      error.code = "AI_INVALID_JSON";
+    } else if (error instanceof TypeError && !error.code) {
+      error.code = "AI_NETWORK_ERROR";
     }
     throw error;
   } finally {

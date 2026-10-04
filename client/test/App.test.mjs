@@ -92,6 +92,22 @@ test("More information toggles details and the quiz still gives learning feedbac
   assert.equal(document.querySelector(".result-screen"), null);
 });
 
+test("More information shows curated disposal options when the AI returns them", async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      ...classification,
+      itemName: "AA battery",
+      category: "electronic",
+      disposalOptions: [{ title: "Battery collection box", guidance: "Use a DSPA collection box.", precautions: ["Cover the contacts."], location: "Macau collection points", source: { name: "DSPA", url: "https://www.dspa.gov.mo/" } }]
+    })
+  });
+  await scan();
+  await click(".more-info-button");
+  assert.equal(document.querySelector(".disposal-options-card").textContent.includes("Battery collection box"), true);
+  assert.equal(document.querySelector(".disposal-options-card").textContent.includes("Cover the contacts."), true);
+});
+
 test("returning during Loading aborts the request and ignores its late response", async () => {
   let finish;
   let requestSignal;

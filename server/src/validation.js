@@ -56,10 +56,8 @@ export function validateClassification(value, allowedSources = []) {
 function applyConservativePaperGuard(result) {
   const itemEvidence = result.itemName.toLowerCase();
   const reasonEvidence = result.reason.toLowerCase();
-  const usedPaperItemPattern = /used\s+(?:facial\s+)?tissue|(?:facial\s+)?tissue|napkin|paper towel|receipt|food[- ]soiled/;
+  const usedPaperItemPattern = /\b(?:tissues?|napkins?|paper towels?|receipts?|food[- ]soiled|wet|greasy|soiled|contaminated)\b/;
   const contaminatedReasonPattern = /(?:the|this|it(?:'s| is| was)?)\s+(?:item|sheet|paper|worksheet|handout)\s+(?:appears|looks|is|was|has been)\s+(?:wet|greasy|soiled|contaminated)|(?:wet|greasy|food[- ]soiled)\s+(?:paper|sheet|item)\s+(?:shown|pictured|visible|in the image)/;
-  const cleanPaperPattern = /clean(?:,| and)?\s+dry|free of (?:food|grease|liquid)|no visible (?:food|grease|liquid)|printed (?:paper|worksheet)|paper (?:worksheet|sheet|handout)/;
-  const paperItemPattern = /paper|worksheet|handout|printed/;
   if ((usedPaperItemPattern.test(itemEvidence) || contaminatedReasonPattern.test(reasonEvidence)) && result.category === "paper") {
     return {
       ...result,
@@ -67,15 +65,6 @@ function applyConservativePaperGuard(result) {
       recyclable: false,
       confidence: Math.min(result.confidence, 0.59),
       reason: `${result.reason} The supplied guidance treats used, wet, greasy, or contaminated paper-like items as general waste.`.trim()
-    };
-  }
-  if (result.category === "general_waste" && paperItemPattern.test(itemEvidence) && cleanPaperPattern.test(reasonEvidence) && !usedPaperItemPattern.test(itemEvidence) && !contaminatedReasonPattern.test(reasonEvidence)) {
-    return {
-      ...result,
-      category: "paper",
-      recyclable: true,
-      confidence: Math.min(result.confidence, 0.65),
-      reason: `${result.reason} The visible evidence describes clean, dry paper, so it matches the supplied paper example; confirm current local collection rules.`.trim()
     };
   }
   return result;

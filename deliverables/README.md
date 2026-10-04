@@ -29,7 +29,7 @@ Search every file for `[` and replace each bracketed field with real information
 2. Print (Ctrl+P) → Destination: **Save as PDF**.
 3. Paper size: the file declares `800mm x 1100mm`. Set **Margins: None** and **Scale: 100%**.
 4. Save as `Poster_EcoScanAI.pdf`. Check the PDF page size is 800 × 1100 mm.
-5. The QR box is a placeholder. Add a real QR code only after the deployed URL is confirmed working, and test that it opens the correct page.
+5. The QR area stays blank until the deployed URL is confirmed working; then add a real QR code and test that it opens the correct page.
 
 **Project Introduction and Research Report (Markdown):**
 - Paste into Google Docs / Microsoft Word, apply a clean style, and export to PDF (`ProjectIntroduction_EcoScanAI.pdf`, `ResearchReport_EcoScanAI.pdf`), keeping the Intro to ≤ 2 pages and the Report to 6–12 pages.
