@@ -1,27 +1,29 @@
 import { buildSystemPrompt } from "./prompt.js";
 import { validateClassification } from "./validation.js";
 
-export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules }) {
+export async function classifyWithDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules, timeoutMs = 45_000 }) {
   if (!apiKey) {
     const error = new Error("DEEPSEEK_API_KEY is not configured on the server.");
     error.code = "AI_NOT_CONFIGURED";
     throw error;
   }
 
+  const retryableCodes = new Set(["AI_EMPTY_RESPONSE", "AI_RATE_LIMITED", "AI_TIMEOUT", "AI_PROVIDER_ERROR", "AI_NETWORK_ERROR", "AI_INVALID_JSON", "AI_INVALID_RESPONSE", "AI_TRUNCATED_RESPONSE"]);
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return await requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules });
+      return await requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules, timeoutMs });
     } catch (error) {
-      if (error.code !== "AI_EMPTY_RESPONSE" || attempt === 1) {
+      if (!retryableCodes.has(error.code) || error.retryable === false || attempt === 1) {
         throw error;
       }
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
   }
 }
 
-async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules }) {
+async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, rules, timeoutMs }) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 45_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const dataUrl = `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
 
   try {
@@ -51,16 +53,24 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
     });
 
     if (!response.ok) {
-      const detail = await response.text();
       const error = new Error(`DeepSeek returned HTTP ${response.status}.`);
       error.code = response.status === 429 ? "AI_RATE_LIMITED" : "AI_PROVIDER_ERROR";
-      error.detail = detail.slice(0, 500);
+      error.retryable = response.status === 429 || response.status >= 500;
+      error.providerStatus = response.status;
       throw error;
     }
 
     const payload = await response.json();
     const choice = payload?.choices?.[0];
-    const content = choice?.message?.content;
+    if (choice?.finish_reason === "length") {
+      const error = new Error("The AI result was cut off by the token limit.");
+      error.code = "AI_TRUNCATED_RESPONSE";
+      throw error;
+    }
+    const rawContent = choice?.message?.content;
+    const content = Array.isArray(rawContent)
+      ? rawContent.filter((part) => part && typeof part.text === "string").map((part) => part.text).join("\n")
+      : rawContent;
     if (typeof content !== "string" || !content.trim()) {
       const error = new Error(
         choice?.finish_reason === "length"
@@ -71,7 +81,24 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
       throw error;
     }
 
-    return validateClassification(parseJsonContent(content), rules?.sources || []);
+    let parsed;
+    try {
+      parsed = parseJsonContent(content);
+    } catch (error) {
+      const jsonError = new Error("The AI response was not valid JSON.");
+      jsonError.code = "AI_INVALID_JSON";
+      jsonError.detail = error.message;
+      throw jsonError;
+    }
+
+    try {
+      return validateClassification(parsed, rules?.sources || []);
+    } catch (error) {
+      const responseError = new Error("The AI response did not match the required classification format.");
+      responseError.code = "AI_INVALID_RESPONSE";
+      responseError.detail = error.message;
+      throw responseError;
+    }
   } catch (error) {
     if (error.name === "AbortError") {
       const timeoutError = new Error("The AI request timed out.");
@@ -79,9 +106,9 @@ async function requestDeepSeek({ imageBuffer, mimeType, apiKey, baseUrl, model, 
       throw timeoutError;
     }
     if (error instanceof SyntaxError) {
-      const jsonError = new Error("The AI response was not valid JSON.");
-      jsonError.code = "AI_INVALID_JSON";
-      throw jsonError;
+      error.code = "AI_INVALID_JSON";
+    } else if (error instanceof TypeError && !error.code) {
+      error.code = "AI_NETWORK_ERROR";
     }
     throw error;
   } finally {

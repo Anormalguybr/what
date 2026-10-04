@@ -54,9 +54,11 @@ export function validateClassification(value, allowedSources = []) {
 }
 
 function applyConservativePaperGuard(result) {
-  const searchable = `${result.itemName} ${result.reason} ${result.cleaningSteps.join(" ")}`.toLowerCase();
-  const usedPaperPattern = /tissue|napkin|paper towel|paper towel|wipe|receipt|food[- ]soiled|greasy|wet paper/;
-  if (usedPaperPattern.test(searchable) && result.category === "paper") {
+  const itemEvidence = result.itemName.toLowerCase();
+  const reasonEvidence = result.reason.toLowerCase();
+  const usedPaperItemPattern = /\b(?:tissues?|napkins?|paper towels?|receipts?|food[- ]soiled|wet|greasy|soiled|contaminated)\b/;
+  const contaminatedReasonPattern = /(?:the|this|it(?:'s| is| was)?)\s+(?:item|sheet|paper|worksheet|handout)\s+(?:appears|looks|is|was|has been)\s+(?:wet|greasy|soiled|contaminated)|(?:wet|greasy|food[- ]soiled)\s+(?:paper|sheet|item)\s+(?:shown|pictured|visible|in the image)/;
+  if ((usedPaperItemPattern.test(itemEvidence) || contaminatedReasonPattern.test(reasonEvidence)) && result.category === "paper") {
     return {
       ...result,
       category: "general_waste",

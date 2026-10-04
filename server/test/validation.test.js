@@ -76,6 +76,46 @@ test("downgrades used tissue-like paper that the model mislabels as recyclable p
   assert.equal(result.confidence, 0.59);
 });
 
+test("keeps clean paper recyclable when contamination only appears in conditional cleaning advice", () => {
+  const result = validateClassification({
+    itemName: "Printed Python worksheet (clean A4 paper)",
+    category: "paper",
+    recyclable: true,
+    confidence: 0.82,
+    reason: "The item appears clean and dry and matches the supplied clean paper rule.",
+    cleaningSteps: ["If the page is wet or greasy, place it in general waste."],
+    learningFact: "Clean, dry paper can match a paper recycling stream.",
+    safetyNote: "",
+    sourceNeeded: true,
+    sources: [],
+    quiz: null
+  });
+
+  assert.equal(result.category, "paper");
+  assert.equal(result.recyclable, true);
+  assert.equal(result.confidence, 0.82);
+});
+
+test("keeps a contradictory general-waste decision conservative", () => {
+  const result = validateClassification({
+    itemName: "Printed paper worksheet",
+    category: "general_waste",
+    recyclable: false,
+    confidence: 0.59,
+    reason: "The printed paper worksheet appears clean and dry with no visible food, grease, or liquid contamination.",
+    cleaningSteps: ["Keep the sheet dry."],
+    learningFact: "Clean paper can match the paper stream.",
+    safetyNote: "",
+    sourceNeeded: true,
+    sources: [],
+    quiz: null
+  });
+
+  assert.equal(result.category, "general_waste");
+  assert.equal(result.recyclable, false);
+  assert.equal(result.confidence, 0.59);
+});
+
 test("normalizes disposal options and keeps only approved sources", () => {
   const result = validateClassification(
     {
