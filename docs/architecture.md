@@ -2,12 +2,24 @@
 
 ## Request flow
 
-1. The React client requests a live camera stream when the user taps the shutter control. A canvas captures one video frame; the user can also use the upload fallback.
+1. The React client tries to start a live camera stream on entry, subject to browser permissions and HTTPS. A canvas captures one video frame; the user can also use the upload fallback.
 2. The client shows the selected frame locally and sends it as `multipart/form-data` to `POST /api/classify` after the loading screen begins.
 3. Express validates the file type and size in memory. The image is not written to disk.
 4. The server sends the image and the current starter rules to the configured DeepSeek vision model.
 5. The server validates the returned JSON against the EcoScan response contract.
 6. The client renders the classification, uncertainty, disposal options, cleaning guidance, learning fact, sources, and quiz.
+
+## Educational image flow
+
+1. `decideVisualGuide` gates the already validated classification. Only supported categories with confidence at least 0.65 and a non-null recycling decision are eligible; recycling eligibility alone does not decide image eligibility.
+2. `/api/classify` returns `visualGuide.status` and an opaque `scanId` for eligible, configured scans. Photos are not retained in this cache.
+3. The independent React `VisualGuide` component requests `POST /api/visual-guide` after the sorting result is visible. Returning to the camera aborts the browser request and ignores late responses.
+4. The backend accepts only a registered scan reference. It shares one generation promise and cached response across duplicate requests, including React StrictMode remounts.
+5. DeepSeek writes a validated English JSON plan (`title`, `prompt`, `parts`) or vetoes generation. Prompt constraints forbid unsupported composition figures and unsafe electronics disassembly.
+6. RelayRouter receives the text-only plan at `/v1/chat/completions` with `gemini-3.1-flash-lite-image`. The image parser accepts inline bitmap responses with valid signatures and rejects hosted URLs/SVG. No automatic second image request is made after an error.
+7. The result UI displays the image, English numbered legend and AI disclosure at the start of More information. This section is collapsed by default. Generation runs independently in the background, and toggling the section keeps the same image component mounted so it does not send another generation request. Expanding scrolls to the details section.
+
+The generation request has a shared 90-second deadline and the browser waits up to 95 seconds. The in-memory cache expires scan references after ten minutes, prunes on access, caps stored entries at 16 and concurrent jobs at two. This bounds prototype resource usage but does not provide public-service authentication or rate limits. A deployment with multiple Node workers needs a shared job store.
 
 ## Responsibility boundaries
 

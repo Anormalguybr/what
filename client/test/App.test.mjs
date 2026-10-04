@@ -8,6 +8,11 @@ globalThis.document = dom.window.document;
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: dom.window.navigator });
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.scrollTo = () => {};
+let detailScrolls = [];
+dom.window.HTMLElement.prototype.scrollIntoView = function (options) {
+  detailScrolls.push({ id: this.id, hidden: this.hidden, options });
+};
+dom.window.matchMedia = () => ({ matches: false });
 URL.createObjectURL = () => "blob:anonymous-test-image";
 URL.revokeObjectURL = () => {};
 
@@ -33,6 +38,8 @@ const classification = {
 let root;
 const originalFetch = globalThis.fetch;
 beforeEach(async () => {
+  detailScrolls = [];
+  dom.window.matchMedia = () => ({ matches: false });
   root = createRoot(document.getElementById("root"));
   globalThis.fetch = async () => ({ ok: true, json: async () => classification });
   await act(async () => root.render(createElement(App)));
@@ -80,6 +87,7 @@ test("More information toggles details and the quiz still gives learning feedbac
   await click(".more-info-button");
   assert.equal(document.querySelector("#result-details").hidden, false);
   assert.equal(document.querySelector(".more-info-button").getAttribute("aria-expanded"), "true");
+  assert.deepEqual(detailScrolls, [{ id: "result-details", hidden: false, options: { behavior: "smooth", block: "start" } }]);
   assert.ok(document.querySelector(".steps-list"));
   assert.equal(document.querySelectorAll(".steps-list li").length, classification.cleaningSteps.length);
   await click('input[name="quiz"]');
@@ -87,9 +95,17 @@ test("More information toggles details and the quiz still gives learning feedbac
   assert.match(document.querySelector(".quiz-feedback").textContent, /Correct/);
   await click(".more-info-button");
   assert.equal(document.querySelector("#result-details").hidden, true);
+  assert.equal(detailScrolls.length, 1);
   await click(".back-button");
   assert.ok(document.querySelector(".capture-screen"));
   assert.equal(document.querySelector(".result-screen"), null);
+});
+
+test("More information respects reduced motion when navigating to details", async () => {
+  dom.window.matchMedia = () => ({ matches: true });
+  await scan();
+  await click(".more-info-button");
+  assert.deepEqual(detailScrolls, [{ id: "result-details", hidden: false, options: { behavior: "auto", block: "start" } }]);
 });
 
 test("More information shows curated disposal options when the AI returns them", async () => {
@@ -146,4 +162,84 @@ test("normalizes provider values serialized as strings", async () => {
   await scan();
   assert.equal(document.querySelector(".result-screen").querySelector(".confidence-row").textContent.includes("74%"), true);
   assert.equal(document.querySelector(".decision-banner").textContent.includes("Likely recyclable"), true);
+});
+
+test("visual guide loads independently and displays its English material legend", async () => {
+  let finish;
+  let calls = 0;
+  globalThis.fetch = async (url) => {
+    calls += 1;
+    if (url.endsWith("/classify")) return { ok: true, json: async () => ({ ...classification, visualGuide: { status: "pending", scanId: "test-scan" } }) };
+    return new Promise((resolve) => { finish = resolve; });
+  };
+  await scan();
+  assert.ok(document.querySelector(".result-screen"));
+  assert.ok(document.querySelector("#result-details > .visual-guide"));
+  assert.match(document.querySelector(".visual-guide").textContent, /Drawing your material guide/);
+  assert.equal(document.querySelector("#result-details").hidden, true);
+  await act(async () => finish({ ok: true, json: async () => ({ status: "ready", title: "Bottle anatomy", imageUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWQAAAAASUVORK5CYII=", parts: [{ name: "Bottle body", material: "Estimated plastic", note: "A simplified container." }] }) }));
+  assert.equal(document.querySelector(".visual-guide-image img").getAttribute("alt"), "Simplified educational illustration of Bottle anatomy");
+  assert.match(document.querySelector(".material-parts").textContent, /Estimated plastic/);
+  assert.match(document.querySelector(".visual-guide").textContent, /AI-generated/);
+  assert.equal(calls, 2);
+  await click(".more-info-button");
+  assert.equal(document.querySelector("#result-details").hidden, false);
+  const generatedImage = document.querySelector(".visual-guide-image img");
+  await click(".more-info-button");
+  assert.equal(document.querySelector("#result-details").hidden, true);
+  await click(".more-info-button");
+  assert.equal(document.querySelector(".visual-guide-image img"), generatedImage);
+  assert.equal(calls, 2);
+});
+
+test("skipped guides never call the image endpoint and provider failure preserves classification", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; return { ok: true, json: async () => ({ ...classification, visualGuide: { status: "skipped", message: "A clearer photo is needed." } }) }; };
+  await scan();
+  assert.equal(calls, 1);
+  assert.match(document.querySelector(".visual-guide").textContent, /A clearer photo/);
+  await click(".scan-again-button");
+  globalThis.fetch = async (url) => {
+    if (url.endsWith("/classify")) return { ok: true, json: async () => ({ ...classification, visualGuide: { status: "pending", scanId: "test-scan" } }) };
+    throw new Error("Image service is down");
+  };
+  await scan();
+  assert.match(document.querySelector(".visual-guide").textContent, /unavailable/);
+  assert.match(document.querySelector(".decision-banner").textContent, /Likely recyclable/);
+});
+
+test("returning to camera cancels the visual request and ignores a late result", async () => {
+  let finish;
+  let signal;
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith("/classify")) return { ok: true, json: async () => ({ ...classification, visualGuide: { status: "pending", scanId: "test-scan" } }) };
+    signal = options.signal;
+    return new Promise((resolve) => { finish = resolve; });
+  };
+  await scan();
+  await click(".back-button");
+  assert.equal(signal.aborted, true);
+  await act(async () => finish({ ok: true, json: async () => ({ status: "failed", message: "late" }) }));
+  assert.equal(document.querySelector(".visual-guide"), null);
+  assert.ok(document.querySelector(".capture-screen"));
+});
+
+test("invalid illustration responses cannot replace or break the sorting result", async () => {
+  globalThis.fetch = async (url) => ({ ok: true, json: async () => url.endsWith("/classify")
+    ? { ...classification, visualGuide: { status: "pending", scanId: "test-scan" } }
+    : { status: "ready", title: "Bad guide", imageUrl: "https://api.relayrouter.ai", parts: [{ name: "Part" }] } });
+  await scan();
+  assert.equal(document.querySelector(".visual-guide-image"), null);
+  assert.match(document.querySelector(".visual-guide").textContent, /unavailable/);
+  assert.match(document.querySelector(".decision-banner").textContent, /Likely recyclable/);
+});
+
+test("a broken generated bitmap shows a local failure without losing classification", async () => {
+  globalThis.fetch = async (url) => ({ ok: true, json: async () => url.endsWith("/classify")
+    ? { ...classification, visualGuide: { status: "pending", scanId: "test-scan" } }
+    : { status: "ready", title: "Bottle anatomy", imageUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWQAAAAASUVORK5CYII=", parts: [{ name: "Body", material: "Estimated plastic", note: "Simplified." }] } });
+  await scan();
+  await act(async () => document.querySelector(".visual-guide-image img").dispatchEvent(new dom.window.Event("error")));
+  assert.match(document.querySelector(".visual-guide").textContent, /could not be displayed/);
+  assert.match(document.querySelector(".decision-banner").textContent, /Likely recyclable/);
 });

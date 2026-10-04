@@ -143,8 +143,9 @@ h1, h2, h3, p { margin-top: 0; }
 .scan-again-button { display: flex; width: 100%; min-height: 50px; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; border: 0; border-radius: 9px; color: #fff; background: linear-gradient(135deg, #2d7cf0, #1166da); box-shadow: 0 8px 18px rgba(24, 119, 238, 0.2); font-weight: 750; transition: background-color 180ms ease, transform 180ms ease; }
 .scan-again-button:hover { background: linear-gradient(135deg, #1f70e2, #075ac8); transform: translateY(-1px); }
 .result-panel > .recycle-status, .compatibility-summary { display: none; }
-.result-details { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: min(1160px, 100%); margin: 14px auto 0; }
+.result-details { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: min(1160px, 100%); margin: 14px auto 0; scroll-margin-top: 16px; }
 .result-details[hidden] { display: none; }
+.result-details > .visual-guide { grid-column: 1 / -1; margin-top: 0; }
 .result-detail-card, .quiz-card { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 10px 28px rgba(55, 80, 61, 0.07); backdrop-filter: blur(18px); }
 .result-details .quiz-card { grid-column: 1 / -1; margin-top: 0; }
 .result-copy { color: #4d5b51; line-height: 1.65; }
@@ -176,6 +177,35 @@ h1, h2, h3, p { margin-top: 0; }
 .quiz-feedback svg { flex: 0 0 auto; margin-top: 2px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.visual-guide { margin-top: 28px; padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.visual-guide-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.visual-guide-header h2 { margin: 0; font-size: 1.5rem; line-height: 1.3; }
+.visual-guide-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid #b8dcda; border-radius: 4px; color: #226763; background: #edf8f7; font-size: 0.7rem; }
+.visual-guide-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 28px; }
+.visual-guide-image { min-width: 0; margin: 0; }
+.visual-guide-image img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.visual-guide-image figcaption, .visual-guide-note { margin: 8px 0 0; color: #596676; font-size: 0.76rem; line-height: 1.5; }
+.material-parts { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.material-parts li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+.material-part-number { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid #b5d8d4; border-radius: 50%; color: #226763; background: #eef8f6; font-size: 0.8rem; font-weight: 750; }
+.material-parts li:nth-child(even) .material-part-number { color: #9a5147; border-color: #e9c5bd; background: #fff2ed; }
+.material-parts h3 { margin: 0 0 4px; font-size: 0.96rem; }
+.material-parts p { margin: 4px 0 0; color: #596676; font-size: 0.82rem; line-height: 1.5; }
+.material-parts .material-part-material { color: #226763; font-weight: 700; }
+.visual-guide-note { padding-top: 12px; }
+.visual-guide-state { display: flex; align-items: flex-start; gap: 12px; padding: 22px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.visual-guide-state svg { flex: 0 0 auto; color: #226763; }
+.visual-guide-state strong { font-size: 0.9rem; }
+.visual-guide-state p { margin: 5px 0 0; color: #596676; font-size: 0.83rem; line-height: 1.5; }
+.visual-guide-spinner { animation: spin 1.2s linear infinite; }
+
+@media (max-width: 700px) {
+  .visual-guide { padding: 20px 0; }
+  .visual-guide-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .visual-guide-header h2 { font-size: 1.25rem; }
+  .visual-guide-header { gap: 8px; }
+}
 
 @media (max-width: 900px) {
   .capture-workspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); min-height: 0; height: calc(100svh - 32px); }

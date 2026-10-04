@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import VisualGuide from "./VisualGuide.jsx";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -424,7 +425,16 @@ LoadingScreen.propTypes = {
 
 function ResultScreen({ result, previewUrl, quizChoice, quizSubmitted, onChoice, onSubmit, onBack, onReset }) {
   const [showDetails, setShowDetails] = useState(false);
+  const detailsRef = useRef(null);
   useEffect(() => setShowDetails(false), [result]);
+  useEffect(() => {
+    if (showDetails) {
+      detailsRef.current?.scrollIntoView({
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start"
+      });
+    }
+  }, [showDetails]);
   if (!result) return null;
   const isLowConfidence = result.confidence < 0.65;
   const confidencePercent = Math.round(result.confidence * 100);
@@ -464,7 +474,8 @@ function ResultScreen({ result, previewUrl, quizChoice, quizSubmitted, onChoice,
           </div>
         </div>
 
-          <div id="result-details" className="result-details" hidden={!showDetails}>
+          <div id="result-details" ref={detailsRef} className="result-details" hidden={!showDetails}>
+            <VisualGuide guide={result.visualGuide} />
             {result.disposalOptions?.length > 0 && (
               <article className="result-detail-card disposal-options-card">
                 <div className="result-label">Disposal options</div>
@@ -512,6 +523,7 @@ ResultScreen.propTypes = {
     category: PropTypes.string.isRequired,
     recyclable: PropTypes.bool,
     confidence: PropTypes.number.isRequired,
+    visualGuide: PropTypes.shape({ status: PropTypes.string.isRequired, scanId: PropTypes.string, message: PropTypes.string }),
     reason: PropTypes.string,
     cleaningSteps: PropTypes.arrayOf(PropTypes.string).isRequired,
     disposalOptions: PropTypes.arrayOf(

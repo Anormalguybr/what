@@ -5,6 +5,9 @@ import express from "express";
 import multer from "multer";
 import { classifyWithDeepSeek } from "./deepseek.js";
 import { isSupportedImageBuffer } from "./image-validation.js";
+import { generateVisualGuide } from "./visual-guide.js";
+import { createVisualGuideStore } from "./visual-guide-store.js";
+import { createVisualGuideRouter } from "./visual-guide-route.js";
 
 const rulesData = JSON.parse(readFileSync(new URL("../data/macau-recycling-rules.json", import.meta.url), "utf8"));
 
@@ -13,6 +16,21 @@ const port = Number(process.env.PORT || 8787);
 const maxImageBytes = Number(process.env.MAX_IMAGE_BYTES || 10 * 1024 * 1024);
 const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const visualConfig = {
+  deepseek: { apiKey: process.env.DEEPSEEK_API_KEY, baseUrl: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com", model: process.env.DEEPSEEK_MODEL || "deepseek-flash" },
+  image: { apiKey: process.env.IMAGE_API_KEY, baseUrl: process.env.IMAGE_BASE_URL || "https://api.relayrouter.ai/v1", model: process.env.IMAGE_MODEL || "gemini-3.1-flash-lite-image" }
+};
+const visualGuides = createVisualGuideStore({
+  configured: Boolean(visualConfig.deepseek.apiKey && visualConfig.image.apiKey),
+  generate: async (result) => {
+    try {
+      return await generateVisualGuide(result, visualConfig);
+    } catch (error) {
+      console.warn("Visual guide failed", { code: error.code || "VISUAL_REQUEST_FAILED" });
+      throw error;
+    }
+  }
+});
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -21,8 +39,9 @@ const upload = multer({
 });
 
 app.use(cors({ origin: clientOrigin }));
+app.use("/api", createVisualGuideRouter(visualGuides));
 app.get("/api/health", (_request, response) => {
-  response.json({ ok: true, aiConfigured: Boolean(process.env.DEEPSEEK_API_KEY) });
+  response.json({ ok: true, aiConfigured: Boolean(process.env.DEEPSEEK_API_KEY), visualGuideConfigured: Boolean(visualConfig.deepseek.apiKey && visualConfig.image.apiKey) });
 });
 
 app.post("/api/classify", upload.single("image"), async (request, response) => {
@@ -56,7 +75,8 @@ app.post("/api/classify", upload.single("image"), async (request, response) => {
       model: process.env.DEEPSEEK_MODEL || "deepseek-flash",
       rules: rulesData
     });
-    return response.json(result);
+    response.set("Cache-Control", "no-store");
+    return response.json({ ...result, visualGuide: visualGuides.register(result) });
   } catch (error) {
     const statusByCode = {
       AI_NOT_CONFIGURED: 503,
