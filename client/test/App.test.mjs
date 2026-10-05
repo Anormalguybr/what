@@ -243,3 +243,33 @@ test("a broken generated bitmap shows a local failure without losing classificat
   assert.match(document.querySelector(".visual-guide").textContent, /could not be displayed/);
   assert.match(document.querySelector(".decision-banner").textContent, /Likely recyclable/);
 });
+
+test("the camera can be turned off and on again without leaking the stream", async () => {
+  const stopped = [];
+  const fakeStream = { getTracks: () => [{ stop: () => stopped.push(true) }] };
+  const originalRaf = globalThis.requestAnimationFrame;
+  const originalPlay = dom.window.HTMLMediaElement.prototype.play;
+  globalThis.requestAnimationFrame = (callback) => { callback(); return 0; };
+  dom.window.HTMLMediaElement.prototype.play = () => Promise.resolve();
+  Object.defineProperty(dom.window.navigator, "mediaDevices", {
+    configurable: true,
+    value: { getUserMedia: async () => fakeStream }
+  });
+  try {
+    await click('[aria-label="Turn camera on"]');
+    assert.ok(document.querySelector('[aria-label="Turn camera off"]'), "camera should report as active once the stream starts");
+    assert.equal(document.querySelector(".camera-empty"), null);
+
+    await click('[aria-label="Turn camera off"]');
+    assert.ok(document.querySelector('[aria-label="Turn camera on"]'), "camera should report as off after stopping");
+    assert.equal(document.querySelector(".camera-empty").textContent.includes("Camera is off"), true);
+    assert.ok(stopped.length >= 1, "the camera track must be stopped when turned off");
+
+    await click('[aria-label="Turn camera on"]');
+    assert.ok(document.querySelector('[aria-label="Turn camera off"]'), "camera should start again after being turned back on");
+  } finally {
+    globalThis.requestAnimationFrame = originalRaf;
+    dom.window.HTMLMediaElement.prototype.play = originalPlay;
+    delete dom.window.navigator.mediaDevices;
+  }
+});

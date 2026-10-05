@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Camera,
+  CameraOff,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -31,6 +32,7 @@ export default function App() {
   const [quizChoice, setQuizChoice] = useState(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraPaused, setCameraPaused] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const cameraInputRef = useRef(null);
   const uploadInputRef = useRef(null);
@@ -95,12 +97,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (screen === "capture" && !file && !cameraActive && !cameraError && !cameraStartRef.current) {
+    if (screen === "capture" && !file && !cameraActive && !cameraPaused && !cameraError && !cameraStartRef.current) {
       cameraStartRef.current = startCamera().finally(() => {
         cameraStartRef.current = null;
       });
     }
-  }, [screen, file, cameraActive, cameraError, startCamera]);
+  }, [screen, file, cameraActive, cameraPaused, cameraError, startCamera]);
 
   useEffect(() => () => stopCamera(), []);
 
@@ -198,6 +200,17 @@ export default function App() {
     setCameraActive(false);
   }
 
+  function turnCameraOn() {
+    setCameraPaused(false);
+    setCameraError("");
+  }
+
+  function turnCameraOff() {
+    setCameraPaused(true);
+    cameraRequestIdRef.current += 1;
+    stopCamera();
+  }
+
   function captureFrame() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -229,6 +242,7 @@ export default function App() {
     setQuizChoice(null);
     setQuizSubmitted(false);
     setCameraError("");
+    setCameraPaused(false);
     stopCamera();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl("");
@@ -253,6 +267,7 @@ export default function App() {
           error={error}
           cameraError={cameraError}
           cameraActive={cameraActive}
+          cameraPaused={cameraPaused}
           cameraInputRef={cameraInputRef}
           uploadInputRef={uploadInputRef}
           videoRef={videoRef}
@@ -260,7 +275,8 @@ export default function App() {
           onFile={selectFile}
           onAnalyze={analyzeImage}
           onReset={resetScan}
-          onStartCamera={startCamera}
+          onStartCamera={turnCameraOn}
+          onStopCamera={turnCameraOff}
           onCaptureFrame={captureFrame}
         />
       )}
@@ -298,7 +314,7 @@ function normalizeClassification(payload) {
   };
 }
 
-function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cameraInputRef, uploadInputRef, videoRef, canvasRef, onFile, onAnalyze, onReset, onStartCamera, onCaptureFrame }) {
+function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cameraPaused, cameraInputRef, uploadInputRef, videoRef, canvasRef, onFile, onAnalyze, onReset, onStartCamera, onStopCamera, onCaptureFrame }) {
   const hasPreview = Boolean(file && previewUrl);
 
   return (
@@ -313,7 +329,7 @@ function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cam
             <h1 id="page-title">Scan an item</h1>
           </div>
           <nav className="capture-nav" aria-label="Capture method">
-            <button className="capture-nav-item is-active" type="button" onClick={onStartCamera} aria-label="Use camera">
+            <button className={`capture-nav-item ${cameraActive ? "is-active" : ""}`} type="button" onClick={cameraActive ? onStopCamera : onStartCamera} aria-pressed={cameraActive} aria-label={cameraActive ? "Turn camera off" : "Turn camera on"} title={cameraActive ? "Turn camera off" : "Turn camera on"}>
               <Camera size={22} aria-hidden="true" /><span>Camera</span>
             </button>
             <button className="capture-nav-item" type="button" onClick={() => uploadInputRef.current?.click()} aria-label="Upload an image">
@@ -332,8 +348,8 @@ function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cam
             ) : (
               <div className="camera-empty">
                 <span className="camera-empty-icon" aria-hidden="true"><Camera size={25} strokeWidth={1.8} /></span>
-                <strong>Ready when you are</strong>
-                <span>Use your camera or choose a photo</span>
+                <strong>{cameraPaused ? "Camera is off" : "Ready when you are"}</strong>
+                <span>{cameraPaused ? "Turn the camera on or choose a photo" : "Use your camera or choose a photo"}</span>
               </div>
             )}
             <span className="viewfinder viewfinder-tl" aria-hidden="true" />
@@ -352,10 +368,22 @@ function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cam
               <span className="shutter-disc">{hasPreview ? <ArrowUpRight size={25} aria-hidden="true" /> : <Camera size={25} aria-hidden="true" />}</span>
               <span>{hasPreview ? "Analyze" : "Capture"}</span>
             </button>
-            <button className="round-control" type="button" onClick={hasPreview ? onReset : onStartCamera} aria-label={hasPreview ? "Choose another image" : "Start live camera"}>
-              {hasPreview ? <RefreshCcw size={24} aria-hidden="true" /> : <RefreshCcw size={24} aria-hidden="true" />}
-              <span>{hasPreview ? "Retake" : "Switch camera"}</span>
-            </button>
+            {hasPreview ? (
+              <button className="round-control" type="button" onClick={onReset} aria-label="Choose another image">
+                <RefreshCcw size={24} aria-hidden="true" />
+                <span>Retake</span>
+              </button>
+            ) : cameraActive ? (
+              <button className="round-control" type="button" onClick={onStopCamera} aria-label="Turn camera off">
+                <CameraOff size={24} aria-hidden="true" />
+                <span>Camera off</span>
+              </button>
+            ) : (
+              <button className="round-control" type="button" onClick={onStartCamera} aria-label="Turn camera on">
+                <Camera size={24} aria-hidden="true" />
+                <span>Camera on</span>
+              </button>
+            )}
             <input ref={cameraInputRef} className="visually-hidden" tabIndex={-1} aria-label="Take a photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => onFile(event.target.files?.[0])} />
             <input ref={uploadInputRef} className="visually-hidden" tabIndex={-1} aria-label="Upload image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onFile(event.target.files?.[0])} />
             <canvas ref={canvasRef} className="visually-hidden" aria-hidden="true" />
@@ -372,6 +400,7 @@ CaptureScreen.propTypes = {
   error: PropTypes.string.isRequired,
   cameraError: PropTypes.string.isRequired,
   cameraActive: PropTypes.bool.isRequired,
+  cameraPaused: PropTypes.bool.isRequired,
   cameraInputRef: PropTypes.object.isRequired,
   uploadInputRef: PropTypes.object.isRequired,
   videoRef: PropTypes.object.isRequired,
@@ -380,6 +409,7 @@ CaptureScreen.propTypes = {
   onAnalyze: PropTypes.func.isRequired,
   onReset: PropTypes.func.isRequired,
   onStartCamera: PropTypes.func.isRequired,
+  onStopCamera: PropTypes.func.isRequired,
   onCaptureFrame: PropTypes.func.isRequired
 };
 
