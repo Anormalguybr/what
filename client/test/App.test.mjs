@@ -245,7 +245,6 @@ test("a broken generated bitmap shows a local failure without losing classificat
 });
 
 test("the camera can be turned off and on again without leaking the stream", async () => {
-  // The camera is unconfigured in the default jsdom render, so the first click retries with a stub stream.
   const stopped = [];
   const fakeStream = { getTracks: () => [{ stop: () => stopped.push(true) }] };
   const originalRaf = globalThis.requestAnimationFrame;

@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import VisualGuide from "./VisualGuide.jsx";
-import { CameraControls, useCamera } from "./CameraControls.jsx";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowUpRight,
   Camera,
+  CameraOff,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -16,6 +17,7 @@ import {
   Leaf,
   LoaderCircle,
   Recycle,
+  RefreshCcw,
   UserRound
 } from "lucide-react";
 
@@ -29,28 +31,17 @@ export default function App() {
   const [error, setError] = useState("");
   const [quizChoice, setQuizChoice] = useState(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraPaused, setCameraPaused] = useState(false);
+  const [cameraError, setCameraError] = useState("");
   const cameraInputRef = useRef(null);
   const uploadInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const cameraStreamRef = useRef(null);
+  const cameraStartRef = useRef(null);
+  const cameraRequestIdRef = useRef(0);
   const analysisRequestRef = useRef(null);
-
-  const {
-    cameraActive,
-    cameraPaused,
-    cameraError,
-    setCameraError,
-    stopCamera,
-    turnCameraOn,
-    turnCameraOff,
-    captureFrame
-  } = useCamera({
-    screen,
-    hasImage: Boolean(file),
-    videoRef,
-    canvasRef,
-    onCapture: selectFile
-  });
 
   useEffect(() => {
     return () => {
@@ -62,6 +53,59 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [screen]);
 
+  useEffect(() => {
+    if (screen !== "capture") stopCamera();
+  }, [screen]);
+
+  const startCamera = useCallback(async () => {
+    setCameraError("");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Live camera preview is unavailable in this browser. Use Upload image instead.");
+      return;
+    }
+
+    const requestId = ++cameraRequestIdRef.current;
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      if (requestId !== cameraRequestIdRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      cameraStreamRef.current = stream;
+      setCameraActive(true);
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+        }
+      });
+    } catch (cameraRequestError) {
+      const message = cameraRequestError.name === "NotAllowedError" || cameraRequestError.name === "SecurityError"
+        ? "Camera permission was denied or this page is not using HTTPS. Use Upload image or allow camera access."
+        : "Live camera preview needs HTTPS and camera permission. Use Upload image instead.";
+      setCameraError(message);
+      setCameraActive(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (screen === "capture" && !file && !cameraActive && !cameraPaused && !cameraError && !cameraStartRef.current) {
+      cameraStartRef.current = startCamera().finally(() => {
+        cameraStartRef.current = null;
+      });
+    }
+  }, [screen, file, cameraActive, cameraPaused, cameraError, startCamera]);
+
+  useEffect(() => () => stopCamera(), []);
+
   useEffect(() => () => analysisRequestRef.current?.abort(), []);
 
   function selectFile(nextFile) {
@@ -71,6 +115,7 @@ export default function App() {
     setQuizSubmitted(false);
     setScreen("capture");
     setCameraError("");
+    cameraRequestIdRef.current += 1;
     stopCamera();
 
     if (!nextFile) return;
@@ -148,6 +193,46 @@ export default function App() {
     }
   }
 
+  function stopCamera() {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraActive(false);
+  }
+
+  function turnCameraOn() {
+    setCameraPaused(false);
+    setCameraError("");
+  }
+
+  function turnCameraOff() {
+    setCameraPaused(true);
+    cameraRequestIdRef.current += 1;
+    stopCamera();
+  }
+
+  function captureFrame() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState < 2 || !video.videoWidth) {
+      setCameraError("The camera is still warming up. Please try again.");
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setCameraError("The photo could not be captured. Please use Upload image.");
+        return;
+      }
+      const capturedFile = new File([blob], `ecoscan-${Date.now()}.jpg`, { type: "image/jpeg" });
+      stopCamera();
+      selectFile(capturedFile);
+    }, "image/jpeg", 0.9);
+  }
+
   function resetScan() {
     analysisRequestRef.current?.abort();
     analysisRequestRef.current = null;
@@ -156,7 +241,8 @@ export default function App() {
     setError("");
     setQuizChoice(null);
     setQuizSubmitted(false);
-    turnCameraOn();
+    setCameraError("");
+    setCameraPaused(false);
     stopCamera();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl("");
@@ -274,19 +360,34 @@ function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cam
 
           {(error || cameraError) && <div className="alert" role="alert"><AlertTriangle size={16} aria-hidden="true" /> {error || cameraError}</div>}
 
-          <CameraControls
-            hasPreview={hasPreview}
-            cameraActive={cameraActive}
-            onUpload={() => uploadInputRef.current?.click()}
-            onAnalyze={onAnalyze}
-            onCaptureFrame={onCaptureFrame}
-            onStartCamera={onStartCamera}
-            onStopCamera={onStopCamera}
-            onReset={onReset}
-          />
-          <input ref={cameraInputRef} className="visually-hidden" tabIndex={-1} aria-label="Take a photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => onFile(event.target.files?.[0])} />
-          <input ref={uploadInputRef} className="visually-hidden" tabIndex={-1} aria-label="Upload image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onFile(event.target.files?.[0])} />
-          <canvas ref={canvasRef} className="visually-hidden" aria-hidden="true" />
+          <div className="camera-controls glass-control-bar">
+            <button className="round-control" type="button" onClick={() => uploadInputRef.current?.click()} aria-label="Upload an image">
+              <ImagePlus size={24} aria-hidden="true" /><span>Upload image</span>
+            </button>
+            <button className={`shutter-control ${hasPreview ? "shutter-ready" : ""}`} type="button" onClick={hasPreview ? onAnalyze : cameraActive ? onCaptureFrame : onStartCamera} aria-label={hasPreview ? "Analyze selected item" : cameraActive ? "Capture photo" : "Start live camera"}>
+              <span className="shutter-disc">{hasPreview ? <ArrowUpRight size={25} aria-hidden="true" /> : <Camera size={25} aria-hidden="true" />}</span>
+              <span>{hasPreview ? "Analyze" : "Capture"}</span>
+            </button>
+            {hasPreview ? (
+              <button className="round-control" type="button" onClick={onReset} aria-label="Choose another image">
+                <RefreshCcw size={24} aria-hidden="true" />
+                <span>Retake</span>
+              </button>
+            ) : cameraActive ? (
+              <button className="round-control" type="button" onClick={onStopCamera} aria-label="Turn camera off">
+                <CameraOff size={24} aria-hidden="true" />
+                <span>Camera off</span>
+              </button>
+            ) : (
+              <button className="round-control" type="button" onClick={onStartCamera} aria-label="Turn camera on">
+                <Camera size={24} aria-hidden="true" />
+                <span>Camera on</span>
+              </button>
+            )}
+            <input ref={cameraInputRef} className="visually-hidden" tabIndex={-1} aria-label="Take a photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => onFile(event.target.files?.[0])} />
+            <input ref={uploadInputRef} className="visually-hidden" tabIndex={-1} aria-label="Upload image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onFile(event.target.files?.[0])} />
+            <canvas ref={canvasRef} className="visually-hidden" aria-hidden="true" />
+          </div>
         </section>
       </div>
     </section>
