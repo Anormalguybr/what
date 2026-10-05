@@ -29,7 +29,7 @@ npm --prefix server run dev
 npm --prefix client run dev
 ```
 
-Open <http://localhost:5173>. The capture screen requests a live camera preview with `getUserMedia`; after the shutter is pressed, the current video frame becomes the image sent for analysis. Camera access requires HTTPS on phones (localhost is also allowed by browsers). The upload control remains the fallback when a LAN URL is not served over HTTPS or permission is denied.
+Open <http://localhost:5173>. The capture screen requests a live camera preview with `getUserMedia`; after the shutter is pressed, the current video frame becomes the image sent for analysis. The Camera toggle turns the live preview off and on: switching it off immediately stops the camera tracks so the device is released, and shows a "Camera is off" prompt until it is switched back on or an image is uploaded. Camera access requires HTTPS on phones (localhost is also allowed by browsers). The upload control remains the fallback when a LAN URL is not served over HTTPS or permission is denied.
 
 ### Windows PowerShell
 
