@@ -244,6 +244,171 @@ test("a broken generated bitmap shows a local failure without losing classificat
   assert.match(document.querySelector(".decision-banner").textContent, /Likely recyclable/);
 });
 
+test("recycling point finder lists channels, opens one and filters by area", async () => {
+  const calls = [];
+  const channelSummary = { id: "glass", name: "Glass bottles", nameZh: "玻璃樽", accepts: ["glass"], note: "Rinse first.", officialFinder: "https://example.org/glass", sourceIds: ["s1"], count: 2, regions: { macau: 1, taipa: 0, coloane: 1 } };
+  const locations = [{ id: "g1", name: "Park bin", address: "Park Road 1", region: "macau" }, { id: "g2", name: "Beach bin", address: "Beach Road 2", region: "coloane" }];
+  globalThis.fetch = async (url) => {
+    calls.push(String(url));
+    if (String(url).endsWith("/api/recycling-points")) {
+      return { ok: true, json: async () => ({ accessed: "2026-10-06", sourceNote: "Captured from DSPA.", total: 2, channels: [channelSummary], sources: [{ id: "s1", name: "DSPA", url: "https://example.org/glass" }] }) };
+    }
+    return { ok: true, json: async () => ({ channel: channelSummary, total: 2, limit: 60, offset: 0, locations, sources: [{ id: "s1", name: "DSPA", url: "https://example.org/glass" }] }) };
+  };
+
+  await click('[aria-label="Find recycling points"]');
+  assert.ok(document.querySelector(".points-screen"));
+  assert.equal(document.querySelector(".points-channel-card").textContent.includes("Glass bottles"), true);
+  assert.match(document.querySelector(".points-channel-card").textContent, /2 points/);
+
+  await click(".points-open");
+  assert.equal(document.querySelectorAll(".points-item").length, 2);
+  assert.match(document.querySelector(".points-meta").textContent, /Captured from the DSPA website/);
+
+  const tabs = document.querySelectorAll(".points-region-tab");
+  await click(`.points-region-tab:nth-child(${2})`);
+  assert.ok(calls.some((url) => url.includes("/api/recycling-points/glass") && url.includes("region=macau")), "expected a region-filtered request");
+  assert.ok(tabs.length >= 4);
+
+  await click(".back-button");
+  assert.ok(document.querySelector(".points-channel-card"));
+  await click(".back-button");
+  assert.ok(document.querySelector(".capture-screen"));
+  assert.equal(document.querySelector(".points-screen"), null);
+});
+
+test("nearest points use the device location and show distances", async () => {
+  Object.defineProperty(dom.window.navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: (success) => success({ coords: { latitude: 22.2, longitude: 113.55 } }) }
+  });
+  const channelSummary = { id: "eco-fun-stations", name: "Eco Fun stations", nameZh: "環保加Fun站", accepts: ["plastic"], note: "n", officialFinder: "https://example.org", sourceIds: ["s1"], count: 1, located: 1, regions: { macau: 1, taipa: 0, coloane: 0 } };
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("/recycling-points/nearby")) {
+      return { ok: true, json: async () => ({ origin: { latitude: 22.2, longitude: 113.55 }, locatedTotal: 1, coordinateNote: "Only the Eco Fun network publishes official coordinates.", total: 1, locations: [{ channelId: "eco-fun-stations", channelName: "Eco Fun stations", id: "eco-fun-stations-001", name: "Eco Fun station (Patane)", address: "Patane Road", region: "macau", distanceMeters: 120 }] }) };
+    }
+    if (String(url).endsWith("/api/recycling-points")) return { ok: true, json: async () => ({ accessed: "2026-10-06", total: 1, channels: [channelSummary], sources: [] }) };
+    return { ok: true, json: async () => ({ channel: channelSummary, total: 0, limit: 60, offset: 0, locations: [], sources: [] }) };
+  };
+  try {
+    await click('[aria-label="Find recycling points"]');
+    await click(".points-near");
+    await act(async () => {});
+    const panel = document.querySelector(".points-nearby");
+    assert.ok(panel, "nearby panel should render");
+    assert.match(panel.textContent, /120 m away/);
+    assert.match(panel.textContent, /Eco Fun station \(Patane\)/);
+    assert.match(panel.textContent, /Only the Eco Fun network/);
+    await click(".points-nearby-clear");
+    assert.equal(document.querySelector(".points-nearby"), null);
+  } finally {
+    delete dom.window.navigator.geolocation;
+  }
+});
+
+test("denied location shows guidance and keeps the manual list", async () => {
+  Object.defineProperty(dom.window.navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: (_success, error) => error({ code: 1 }) }
+  });
+  globalThis.fetch = async (url) => {
+    if (String(url).endsWith("/api/recycling-points")) return { ok: true, json: async () => ({ accessed: "2026-10-06", total: 0, channels: [], sources: [] }) };
+    return { ok: true, json: async () => ({}) };
+  };
+  try {
+    await click('[aria-label="Find recycling points"]');
+    await click(".points-near");
+    await act(async () => {});
+    const alert = document.querySelector(".points-alert");
+    assert.ok(alert, "a location error should be announced");
+    assert.match(alert.textContent, /permission was denied/i);
+    assert.equal(document.querySelector(".points-nearby"), null);
+    assert.ok(document.querySelector(".points-screen"));
+  } finally {
+    delete dom.window.navigator.geolocation;
+  }
+});
+
+test("a recyclable scan result links straight to drop-off points", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(String(url));
+    if (String(url).endsWith("/api/classify")) return { ok: true, json: async () => classification };
+    if (String(url).endsWith("/api/recycling-points")) return { ok: true, json: async () => ({ accessed: "2026-10-06", total: 0, channels: [], sources: [] }) };
+    return { ok: true, json: async () => ({ channel: { id: "eco-fun-stations", name: "Eco Fun stations", accepts: ["plastic"], count: 0, regions: { macau: 0, taipa: 0, coloane: 0 } }, total: 0, limit: 60, offset: 0, locations: [], sources: [] }) };
+  };
+  await scan();
+  const link = document.querySelector(".points-link-button");
+  assert.ok(link, "recyclable results should offer a drop-off link");
+  await click(".points-link-button");
+  assert.ok(document.querySelector(".points-screen"));
+  assert.ok(calls.some((url) => url.includes("/api/recycling-points/eco-fun-stations")), "expected a channel-scoped request");
+});
+
+test("after a scan the result page shows the nearest point that accepts the item", async () => {
+  Object.defineProperty(dom.window.navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: (success) => success({ coords: { latitude: 22.19, longitude: 113.54 } }) }
+  });
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(String(url));
+    if (String(url).endsWith("/api/classify")) return { ok: true, json: async () => classification };
+    if (String(url).includes("/recycling-points/nearby")) return { ok: true, json: async () => ({ category: "plastic", stream: "plastic", total: 1, coordinateNote: "Only the Eco Fun network publishes official coordinates.", locations: [{ channelId: "eco-fun-stations", channelName: "Eco Fun stations", id: "eco-fun-stations-002", name: "Eco Fun station (Patane)", address: "Patane Road", region: "macau", distanceMeters: 210 }] }) };
+    return { ok: true, json: async () => ({}) };
+  };
+  try {
+    await scan();
+    await act(async () => {});
+    const panel = document.querySelector(".nearest-point");
+    assert.ok(panel, "the nearest section should render after a recyclable scan");
+    assert.match(panel.textContent, /Where to take it/);
+    assert.match(panel.textContent, /210 m/);
+    assert.match(panel.textContent, /Eco Fun station \(Patane\)/);
+    assert.ok(calls.some((url) => url.includes("/recycling-points/nearby") && url.includes("category=plastic")), "the nearby request must carry the scanned category");
+  } finally {
+    delete dom.window.navigator.geolocation;
+  }
+});
+
+test("a non-recyclable scan does not show drop-off suggestions", async () => {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ ...classification, category: "general_waste", recyclable: false }) });
+  await scan();
+  await act(async () => {});
+  assert.equal(document.querySelector(".nearest-point"), null);
+});
+
+test("the result shows the suggested Macau bin from the server", async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      ...classification,
+      suggestedBin: {
+        category: "plastic",
+        name: "Public three-colour recycling bin - plastic bottles",
+        nameZh: "三色資源回收桶 - 膠樽",
+        guidance: "Empty and rinse the bottle.",
+        image: "/api/bin-images/three-colour-bins.png",
+        imageAlt: "Public three-colour recycling bin - plastic bottles in Macau",
+        imageCredit: { text: "Macao SAR Environmental Protection Bureau (DSPA)", url: "https://www.dspa.gov.mo/richtext_buildings.aspx?a_id=1578363446", accessed: "2026-10-06" },
+        sources: [{ name: "DSPA", url: "https://www.dspa.gov.mo/RecycleIndexPage.aspx" }]
+      }
+    })
+  });
+  await scan();
+  const card = document.querySelector(".bin-suggestion");
+  assert.ok(card, "the suggested bin card should render");
+  assert.match(card.textContent, /Suggested Macau bin/);
+  assert.match(card.textContent, /plastic bottles/);
+  assert.match(card.textContent, /三色資源回收桶/);
+  assert.match(card.textContent, /Empty and rinse the bottle/);
+  const photo = card.querySelector(".bin-suggestion-media img");
+  assert.ok(photo, "the bin photo should render");
+  assert.equal(photo.getAttribute("src"), "/api/bin-images/three-colour-bins.png");
+  assert.match(photo.getAttribute("alt"), /Macau/);
+  assert.match(card.querySelector(".bin-photo-credit").textContent, /DSPA/);
+});
+
 test("the camera can be turned off and on again without leaking the stream", async () => {
   const stopped = [];
   const fakeStream = { getTracks: () => [{ stop: () => stopped.push(true) }] };

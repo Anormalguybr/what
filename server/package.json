@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "lint": "eslint src test",
+    "import:points": "node scripts/import-recycling-points.mjs",
+    "lint": "eslint src test scripts",
     "test": "node --test"
   },
   "dependencies": {

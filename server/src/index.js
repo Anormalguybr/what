@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import cors from "cors";
 import express from "express";
 import multer from "multer";
@@ -8,8 +9,12 @@ import { isSupportedImageBuffer } from "./image-validation.js";
 import { generateVisualGuide } from "./visual-guide.js";
 import { createVisualGuideStore } from "./visual-guide-store.js";
 import { createVisualGuideRouter } from "./visual-guide-route.js";
+import { loadRecyclingPoints } from "./recycling-points.js";
+import { createRecyclingPointsRouter } from "./recycling-points-route.js";
+import { findSuggestedBin } from "./suggested-bin.js";
 
 const rulesData = JSON.parse(readFileSync(new URL("../data/macau-recycling-rules.json", import.meta.url), "utf8"));
+const recyclingPoints = loadRecyclingPoints();
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
@@ -39,7 +44,10 @@ const upload = multer({
 });
 
 app.use(cors({ origin: clientOrigin }));
+// Official Macau bin photos used by the suggested-bin card. Served unmodified.
+app.use("/api/bin-images", express.static(fileURLToPath(new URL("../data/bin-images", import.meta.url)), { maxAge: "7d" }));
 app.use("/api", createVisualGuideRouter(visualGuides));
+app.use("/api", createRecyclingPointsRouter(recyclingPoints));
 app.get("/api/health", (_request, response) => {
   response.json({ ok: true, aiConfigured: Boolean(process.env.DEEPSEEK_API_KEY), visualGuideConfigured: Boolean(visualConfig.deepseek.apiKey && visualConfig.image.apiKey) });
 });
@@ -76,7 +84,7 @@ app.post("/api/classify", upload.single("image"), async (request, response) => {
       rules: rulesData
     });
     response.set("Cache-Control", "no-store");
-    return response.json({ ...result, visualGuide: visualGuides.register(result) });
+    return response.json({ ...result, suggestedBin: findSuggestedBin(rulesData, result.category), visualGuide: visualGuides.register(result) });
   } catch (error) {
     const statusByCode = {
       AI_NOT_CONFIGURED: 503,
