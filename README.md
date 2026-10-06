@@ -77,13 +77,33 @@ The image model receives a text prompt, not the uploaded photograph. Exact polym
 
 ## API
 
-`POST /api/classify` accepts `multipart/form-data` with one field named `image`. Supported types are JPEG, PNG, and WebP. The response is a fixed JSON object containing the item name, category, confidence, reason, cleaning steps, disposal options, learning fact, safety note, sources, and quiz data. When an item has more than one official Macau channel (for example, batteries), the `disposalOptions` array lists each channel with its preparation steps, location, and source. The server drops any option whose source is not in the supplied source list, so a channel or location cannot be invented.
+`POST /api/classify` accepts `multipart/form-data` with one field named `image`. Supported types are JPEG, PNG, and WebP. The response is a fixed JSON object containing the item name, category, confidence, reason, cleaning steps, disposal options, a suggested Macau collection bin, learning fact, safety note, sources, and quiz data. The `suggestedBin` object names the official Macau container for the category (for example the public three-colour recycling bin for plastic bottles, cans and paper, a public glass bottle bin, or a waste battery box) with a source link. It is a curated lookup in `server/src/suggested-bin.js`, not an AI invention. When DSPA publishes a photo of that bin, the response also carries an `image` path served from `/api/bin-images/...`, plus the DSPA attribution and the date the photo was obtained. When an item has more than one official Macau channel (for example, batteries), the `disposalOptions` array lists each channel with its preparation steps, location, and source. The server drops any option whose source is not in the supplied source list, so a channel or location cannot be invented.
+
+The system prompt identifies the item first (a short, specific `itemName` and the dominant material) and only then applies the supplied Macau guidance. A recognizable everyday item keeps its material category even if it is slightly dirty, with the cleaning requirement in `cleaningSteps`, while genuinely unclear or mixed-material images return `unknown`. This keeps the answer both faster and more useful than the previous decision-first wording, without weakening the no-invention rules. See `docs/ai-disclosure.md` for the measured before/after.
 
 `GET /api/health` reports whether the server is running and whether the AI key is configured. It does not reveal the key.
 
 `POST /api/visual-guide` accepts JSON `{ "scanId": "..." }` using the server-issued reference in `/api/classify`'s `visualGuide` field. Client-provided prompts and classification data are not accepted. Responses use `ready`, `skipped`, `failed`, or `unavailable`; `ready` includes `title`, an inline `imageUrl`, `parts`, and a disclaimer. Results are shared for repeated requests for the same scan and expire after ten minutes. The store is bounded to 16 scans and two active generation jobs per server process. It is an in-memory prototype cache, not a distributed or authenticated production service.
 
 Generated images must be inline PNG, JPEG or WebP of at most 8 MB. Remote image URLs and SVG are rejected. A provider group returning hosted URLs will require a separately reviewed adapter. A successful live bottle smoke test is recorded in `docs/testing.md`; model availability depends on the configured provider, and wider diagram accuracy remains unverified.
+
+## Recycling point finder
+
+The capture sidebar, the camera control bar, and the result page for recyclable categories open a drop-off finder built from the official DSPA point lists. It covers Eco Fun stations, the mobile recycling truck, street stations and service points, clothing, glass bottles, light tubes and bulbs, electronics (fixed and mobile), and batteries.
+
+`GET /api/recycling-points` returns the channel summaries: id, name, accepted streams, point count, count-with-coordinates, region counts, official source link and capture date. `GET /api/recycling-points/:channelId` returns the points for one channel and accepts `region` (`macau`, `taipa`, `coloane`), `q` (free-text search over name and address), and `limit`/`offset` for paging. Every point keeps the source id it came from, and points that DSPA publishes with a map link show a Map button. Both endpoints send `Cache-Control: no-store`.
+
+`GET /api/recycling-points/nearby?lat=<latitude>&lng=<longitude>&limit=<n>&category=<scan category>` returns the closest drop-off points to a position, ranked by straight-line (Haversine) distance. Passing `category` (one of the classifier's categories) keeps only points whose channel accepts that material, so a suggestion is never a place that does not take the scanned item; a category with no recycling stream (`general_waste`, `unknown`, `organic`) returns no points. Invalid coordinates or an unknown category return `400`. The client asks the browser for the user's position with `navigator.geolocation` when the **Nearest to me** button is pressed, and automatically after a scan on the result page's **Where to take it** panel. Browser location permission is required, and on phones geolocation needs HTTPS (localhost is also allowed).
+
+Only the Eco Fun network (stations, mobile truck, street stations, service points and community points) publishes official coordinates, through the DSPA `ecofunweb/read_time.aspx?station=ALL` endpoint. The other channels publish an address only, so they are listed without distances and are excluded from the nearest-point search. The Eco Fun network accepts paper, plastic, metal, glass and small electronics (including batteries), so every recyclable scan category can still be matched to a nearby point. The response includes a `coordinateNote` that the UI shows, so this limitation is visible to the user.
+
+The point list is a committed snapshot in `server/data/macau-recycling-points.json`, generated from the DSPA website by `server/scripts/import-recycling-points.mjs`. Refresh it when the source pages change:
+
+```bash
+npm --prefix server run import:points
+```
+
+Point lists change over time, so the finder shows the capture date and links each channel to the official DSPA page. It is a snapshot, not a live feed, and it does not claim that a point will accept a specific item.
 
 ## Verification
 

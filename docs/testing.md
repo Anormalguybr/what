@@ -65,6 +65,40 @@ Live illustration smoke test on 2026-10-04 after the image key was configured:
 - The generated diagram is a generic simplified bottle, not a precise reproduction of the photograph. It adds a typical label, whose presence/material is not confirmed by the source photo; the legend explicitly qualifies its materials as typical estimates. This single successful smoke test does not establish factual accuracy or generation reliability across other items.
 - Generated-image and browser-screen evidence is under `tmp/visual-guide/`, excluded from commits. No original student photos were stored by the backend, and no secrets were printed.
 
+## Classification accuracy verification
+
+The configured model `deepseek-flash` was verified to accept image input and classify images, and the identification prompt was revised so clear everyday items keep their material category instead of falling back to `unknown`.
+
+Recorded on 2026-10-06:
+
+- A synthetic 320x320 PNG (a blue rectangle above a red disc on a white/green background) was described correctly by the API, confirming that image input is genuinely processed rather than ignored.
+- An anonymous, uncommitted Wikimedia Commons photo of a discarded plastic bottle (CC BY-SA 4.0) was classified through the real local server:
+  - With the previous prompt: itemName "Plastic water bottle …", category `unknown`, confidence 0.25.
+  - With the revised prompt: itemName "plastic water bottle", category `plastic`, recyclable true, confidence 0.80–0.88, in about 2.3–3.2 seconds.
+- An ambiguous mixed-material antique (glass bottles in a wooden case) stayed `unknown` at confidence 0.4, so the conservative guard is intact.
+- `server/test/prompt.test.js` guards the identification-first structure, the honesty rules, and the required response fields.
+- `server/test/suggested-bin.test.js` verifies that every recyclable category maps to a named, sourced Macau bin, that the bins with a published photo point to a real file on disk with DSPA attribution, and that `unknown` maps to no bin. A live server smoke check confirmed the classify response carries the `suggestedBin` key (null for an unrecognisable image) and that `/api/bin-images/...` serves the three unmodified DSPA photos with the correct content types.
+
+These checks used the real provider key on the local server. They are a small sample, not a benchmark, and do not establish accuracy across every item. A wider labelled test set is still needed.
+
+## Recycling point finder verification
+
+Automated checks cover the channel summaries, region and free-text filtering, pagination clamping, the dataset's source links, the nearest-point ranking with and without a category, and the HTTP routes (valid request, invalid region, unknown channel, invalid coordinates, unknown category, and that `nearby` is not treated as a channel id). The client tests open the finder from the capture screen, list a channel, open it, filter by area, confirm the result-page drop-off link, cover the geolocation success and permission-denied paths with a mocked `navigator.geolocation`, show the post-scan nearest panel with the scanned category, and confirm a non-recyclable scan shows no suggestion.
+
+Recorded on 2026-10-06:
+
+- `npm --prefix server test`: 31 passed.
+- `npm --prefix server run lint`: passed.
+- `npm --prefix client test`: 20 passed.
+- `npm --prefix client run lint`: passed.
+- `npm --prefix client run build`: passed.
+- `npm --prefix server run import:points` fetched the official DSPA pages and wrote 1,590 points across 11 channels (Eco Fun stations 10, mobile truck 32, street stations 3, service points 5, community points 12, clothing 20, glass 90, light tubes 417, electronics fixed 22, electronics mobile 32, batteries 947), captured 2026-10-06. 62 points carry official coordinates from `ecofunweb/read_time.aspx?station=ALL`.
+- HTTP smoke checks: `/api/recycling-points` returned the 11 channel summaries and `locatedTotal: 62`; `/api/recycling-points/eco-fun-stations?region=macau` returned 7 points; `/api/recycling-points/glass?region=coloane` returned 9 points with DSPA map links; an invalid region returned 400 and an unknown channel returned 404.
+- Nearest-point smoke check: `GET /api/recycling-points/nearby?lat=22.1912&lng=113.5359&limit=5` ranked 環保加Fun站（下環）first at 4 m, then mobile truck stops and service points, all from the Eco Fun network; `lat=999` returned 400.
+- Category-filtered nearest check: the same position with `category=electronic` returned 42 points (Eco Fun stations and the mobile truck only, which are the groups that accept electronics), `category=glass` returned 62, `category=general_waste` returned 0 with `stream: null`, and `category=banana` returned 400.
+
+The point lists are a website snapshot. The finder and the nearest search were exercised against the committed dataset and the local API, not against a live DSPA feed, and the coordinates come from the Eco Fun endpoint rather than the address-only channels. Physical-device location and layout checks for the new screen remain to be done.
+
 ## Education test
 
 Recruit 3–5 classmates or teachers and use anonymous prepared images. Record the item, returned category, whether the user understood the reason, and any error. Do not fill in results before the test is performed.
