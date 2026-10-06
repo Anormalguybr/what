@@ -35,6 +35,13 @@
       "url": "https://www.dspa.gov.mo/richtext3.aspx?a_id=1654824890",
       "accessed": "2026-10-03",
       "use": "large battery types, mobile collection points, pretreatment workshop address"
+    },
+    {
+      "id": "dspa-recycle-index",
+      "name": "DSPA - Reduce and Recycle the Easy Way (recycling routes overview)",
+      "url": "https://www.dspa.gov.mo/RecycleIndexPage.aspx",
+      "accessed": "2026-10-06",
+      "use": "official description of Macau's three-colour public recycling bins (plastic bottles, aluminium and steel cans, paper) and the dedicated battery, electronic, lamp, glass, food waste and clothing channels"
     }
   ],
   "rules": [
@@ -145,6 +152,62 @@
       "localGuidance": "Used tissues, napkins, paper towels, wet or greasy paper, food-soiled paper, receipts, and items that cannot be matched to a local recyclable stream should not be placed in a recycling container.",
       "sourceNeeded": true,
       "sourceIds": ["dspa-home"]
+    }
+  ],
+  "bins": [
+    {
+      "category": "plastic",
+      "name": "Public three-colour recycling bin - plastic bottles",
+      "nameZh": "三色資源回收桶 - 膠樽",
+      "guidance": "Macau's public three-colour recycling bins collect plastic bottles. Empty and rinse the bottle, then remove the cap if local guidance asks.",
+      "sourceIds": ["dspa-recycle-index"],
+      "image": { "file": "three-colour-bins.png", "credit": "Macao SAR Environmental Protection Bureau (DSPA)", "sourceUrl": "https://www.dspa.gov.mo/richtext_buildings.aspx?a_id=1578363446", "accessed": "2026-10-06" }
+    },
+    {
+      "category": "metal",
+      "name": "Public three-colour recycling bin - cans",
+      "nameZh": "三色資源回收桶 - 鋁罐/鐵罐",
+      "guidance": "Macau's public three-colour recycling bins collect aluminium and steel cans. Empty and rinse the can.",
+      "sourceIds": ["dspa-recycle-index"],
+      "image": { "file": "three-colour-bins.png", "credit": "Macao SAR Environmental Protection Bureau (DSPA)", "sourceUrl": "https://www.dspa.gov.mo/richtext_buildings.aspx?a_id=1578363446", "accessed": "2026-10-06" }
+    },
+    {
+      "category": "paper",
+      "name": "Public three-colour recycling bin - paper",
+      "nameZh": "三色資源回收桶 - 紙類",
+      "guidance": "Macau's public three-colour recycling bins collect paper. Keep it clean and dry, and never add tissues, napkins or food-soiled paper.",
+      "sourceIds": ["dspa-recycle-index"],
+      "image": { "file": "three-colour-bins.png", "credit": "Macao SAR Environmental Protection Bureau (DSPA)", "sourceUrl": "https://www.dspa.gov.mo/richtext_buildings.aspx?a_id=1578363446", "accessed": "2026-10-06" }
+    },
+    {
+      "category": "glass",
+      "name": "Public glass bottle recycling bin",
+      "nameZh": "公共玻璃樽回收箱",
+      "guidance": "Use a public glass bottle recycling bin. Rinse the bottle and remove the cap and label where possible.",
+      "sourceIds": ["dspa-recycle-index", "dspa-glass"],
+      "image": { "file": "glass-bin.png", "credit": "Macao SAR Environmental Protection Bureau (DSPA)", "sourceUrl": "https://www.dspa.gov.mo/richtext_recycle_glass_bottle.aspx?a_id=1569493264", "accessed": "2026-10-06" }
+    },
+    {
+      "category": "electronic",
+      "name": "Waste battery box or electronic equipment recycling point",
+      "nameZh": "廢舊電池收集點 / 電子及電器設備回收點",
+      "guidance": "Batteries go to a DSPA battery collection box. Chargers, computers and appliances go to the Electronic and Electrical Equipment Recycling Programme. Follow the disposal options and safety notes.",
+      "sourceIds": ["dspa-recycle-index", "dspa-battery-intro", "dspa-eee"],
+      "image": { "file": "battery-box.jpg", "credit": "Macao SAR Environmental Protection Bureau (DSPA)", "sourceUrl": "https://www.dspa.gov.mo/richtext2.aspx?a_id=101411", "accessed": "2026-10-06" }
+    },
+    {
+      "category": "organic",
+      "name": "Food waste recycling point",
+      "nameZh": "廚餘回收點",
+      "guidance": "Macau collects household food waste at Eco Fun stations, the mobile recycling truck and the street stations. Bring food waste only where the programme operates.",
+      "sourceIds": ["dspa-recycle-index"]
+    },
+    {
+      "category": "general_waste",
+      "name": "General waste bin - not for recycling",
+      "nameZh": "一般垃圾（非回收）",
+      "guidance": "This item should not go into a recycling bin. Put it in the general waste bin.",
+      "sourceIds": ["dspa-recycle-index"]
     }
   ]
 }

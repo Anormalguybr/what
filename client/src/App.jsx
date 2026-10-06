@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import VisualGuide from "./VisualGuide.jsx";
+import RecyclingPoints from "./RecyclingPoints.jsx";
+import NearestPoint from "./NearestPoint.jsx";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -16,12 +18,21 @@ import {
   Info,
   Leaf,
   LoaderCircle,
+  MapPin,
   Recycle,
   RefreshCcw,
   UserRound
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
+
+const POINTS_CATEGORIES = new Set(["plastic", "paper", "metal", "glass", "electronic"]);
+
+function pointsChannelFor(category) {
+  if (["plastic", "paper", "metal"].includes(category)) return "eco-fun-stations";
+  if (category === "glass") return "glass";
+  return null;
+}
 
 export default function App() {
   const [screen, setScreen] = useState("capture");
@@ -34,6 +45,8 @@ export default function App() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraPaused, setCameraPaused] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [pointsChannel, setPointsChannel] = useState(null);
+  const [pointsCategory, setPointsCategory] = useState(null);
   const cameraInputRef = useRef(null);
   const uploadInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -258,6 +271,15 @@ export default function App() {
     setScreen("capture");
   }
 
+  function openPoints(channelId = null, category = null) {
+    analysisRequestRef.current?.abort();
+    analysisRequestRef.current = null;
+    stopCamera();
+    setPointsChannel(channelId);
+    setPointsCategory(category);
+    setScreen("points");
+  }
+
   return (
     <main className={`app-shell screen-${screen}`}>
       {screen === "capture" && (
@@ -278,6 +300,7 @@ export default function App() {
           onStartCamera={turnCameraOn}
           onStopCamera={turnCameraOff}
           onCaptureFrame={captureFrame}
+          onOpenPoints={openPoints}
         />
       )}
       {screen === "loading" && <LoadingScreen previewUrl={previewUrl} onBack={backToCamera} />}
@@ -291,8 +314,10 @@ export default function App() {
           onSubmit={() => setQuizSubmitted(true)}
           onBack={backToCamera}
           onReset={resetScan}
+          onOpenPoints={openPoints}
         />
       )}
+      {screen === "points" && <RecyclingPoints apiUrl={API_URL} initialChannelId={pointsChannel} initialCategory={pointsCategory} onBack={backToCamera} />}
     </main>
   );
 }
@@ -314,7 +339,7 @@ function normalizeClassification(payload) {
   };
 }
 
-function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cameraPaused, cameraInputRef, uploadInputRef, videoRef, canvasRef, onFile, onAnalyze, onReset, onStartCamera, onStopCamera, onCaptureFrame }) {
+function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cameraPaused, cameraInputRef, uploadInputRef, videoRef, canvasRef, onFile, onAnalyze, onReset, onStartCamera, onStopCamera, onCaptureFrame, onOpenPoints }) {
   const hasPreview = Boolean(file && previewUrl);
 
   return (
@@ -334,6 +359,9 @@ function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cam
             </button>
             <button className="capture-nav-item" type="button" onClick={() => uploadInputRef.current?.click()} aria-label="Upload an image">
               <ImagePlus size={22} aria-hidden="true" /><span>Upload image</span>
+            </button>
+            <button className="capture-nav-item" type="button" onClick={() => onOpenPoints(null)} aria-label="Find recycling points">
+              <MapPin size={22} aria-hidden="true" /><span>Recycling points</span>
             </button>
           </nav>
           <p className="sidebar-footnote"><Info size={14} aria-hidden="true" /> AI guidance is based on the supplied Macau rules.</p>
@@ -384,6 +412,10 @@ function CaptureScreen({ file, previewUrl, error, cameraError, cameraActive, cam
                 <span>Camera on</span>
               </button>
             )}
+            <button className="round-control" type="button" onClick={() => onOpenPoints(null)} aria-label="Open recycling points">
+              <MapPin size={24} aria-hidden="true" />
+              <span>Points</span>
+            </button>
             <input ref={cameraInputRef} className="visually-hidden" tabIndex={-1} aria-label="Take a photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => onFile(event.target.files?.[0])} />
             <input ref={uploadInputRef} className="visually-hidden" tabIndex={-1} aria-label="Upload image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onFile(event.target.files?.[0])} />
             <canvas ref={canvasRef} className="visually-hidden" aria-hidden="true" />
@@ -410,7 +442,8 @@ CaptureScreen.propTypes = {
   onReset: PropTypes.func.isRequired,
   onStartCamera: PropTypes.func.isRequired,
   onStopCamera: PropTypes.func.isRequired,
-  onCaptureFrame: PropTypes.func.isRequired
+  onCaptureFrame: PropTypes.func.isRequired,
+  onOpenPoints: PropTypes.func.isRequired
 };
 
 function LoadingScreen({ previewUrl, onBack }) {
@@ -453,7 +486,7 @@ LoadingScreen.propTypes = {
   onBack: PropTypes.func.isRequired
 };
 
-function ResultScreen({ result, previewUrl, quizChoice, quizSubmitted, onChoice, onSubmit, onBack, onReset }) {
+function ResultScreen({ result, previewUrl, quizChoice, quizSubmitted, onChoice, onSubmit, onBack, onReset, onOpenPoints }) {
   const [showDetails, setShowDetails] = useState(false);
   const detailsRef = useRef(null);
   useEffect(() => setShowDetails(false), [result]);
@@ -489,10 +522,37 @@ function ResultScreen({ result, previewUrl, quizChoice, quizSubmitted, onChoice,
               <Recycle size={42} aria-hidden="true" />
               <div><strong>{decisionStatus}</strong><span>Check local collection rules</span></div>
             </div>
+            {result.suggestedBin && (
+              <div className="bin-suggestion">
+                <div className="bin-suggestion-media">
+                  {result.suggestedBin.image
+                    ? <img src={`${API_URL}${result.suggestedBin.image}`} alt={result.suggestedBin.imageAlt || result.suggestedBin.name} loading="lazy" />
+                    : <span className="bin-placeholder" aria-hidden="true"><Recycle size={26} /></span>}
+                </div>
+                <div className="bin-suggestion-body">
+                  <strong>Suggested Macau bin: {result.suggestedBin.name}</strong>
+                  {result.suggestedBin.nameZh && <span className="bin-zh">{result.suggestedBin.nameZh}</span>}
+                  {result.suggestedBin.guidance && <p>{result.suggestedBin.guidance}</p>}
+                  {result.suggestedBin.imageCredit && (
+                    <a className="bin-photo-credit" href={result.suggestedBin.imageCredit.url} target="_blank" rel="noreferrer">
+                      Bin photo: {result.suggestedBin.imageCredit.text} ({result.suggestedBin.imageCredit.accessed})
+                    </a>
+                  )}
+                  {result.suggestedBin.sources?.length > 0 && (
+                    <div className="bin-sources">
+                      {result.suggestedBin.sources.map((source) => (
+                        <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.name} <ExternalLink size={12} aria-hidden="true" /></a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="confidence-callout confidence-row">
               <Info size={24} aria-hidden="true" />
               <div><strong>AI confidence: <span>{confidenceLabel}</span></strong><small>{confidencePercent}% estimate · not official certification</small><span className="confidence-track" role="meter" aria-label="AI confidence estimate" aria-valuemin={0} aria-valuemax={100} aria-valuenow={confidencePercent}><span style={{ width: `${confidencePercent}%` }} /></span></div>
             </div>
+            <NearestPoint apiUrl={API_URL} category={result.category} onOpenPoints={onOpenPoints} />
             <div className="decision-trace-block">
               <h2>Decision trace</h2>
               <DecisionTrace result={result} />
@@ -501,6 +561,11 @@ function ResultScreen({ result, previewUrl, quizChoice, quizSubmitted, onChoice,
               <ChevronDown className={showDetails ? "is-open" : ""} size={18} aria-hidden="true" /> {showDetails ? "Hide information" : "More information"}
             </button>
             <button className="scan-again-button" type="button" onClick={onReset}><Camera size={19} aria-hidden="true" /> Scan another item</button>
+            {POINTS_CATEGORIES.has(result.category) && (
+              <button className="points-link-button" type="button" onClick={() => onOpenPoints(pointsChannelFor(result.category), result.category)}>
+                <MapPin size={18} aria-hidden="true" /> Find a drop-off point
+              </button>
+            )}
           </div>
         </div>
 
@@ -553,6 +618,16 @@ ResultScreen.propTypes = {
     category: PropTypes.string.isRequired,
     recyclable: PropTypes.bool,
     confidence: PropTypes.number.isRequired,
+    suggestedBin: PropTypes.shape({
+      category: PropTypes.string,
+      name: PropTypes.string,
+      nameZh: PropTypes.string,
+      guidance: PropTypes.string,
+      image: PropTypes.string,
+      imageAlt: PropTypes.string,
+      imageCredit: PropTypes.shape({ text: PropTypes.string, url: PropTypes.string, accessed: PropTypes.string }),
+      sources: PropTypes.arrayOf(PropTypes.shape({ name: PropTypes.string, url: PropTypes.string }))
+    }),
     visualGuide: PropTypes.shape({ status: PropTypes.string.isRequired, scanId: PropTypes.string, message: PropTypes.string }),
     reason: PropTypes.string,
     cleaningSteps: PropTypes.arrayOf(PropTypes.string).isRequired,
@@ -582,7 +657,8 @@ ResultScreen.propTypes = {
   onChoice: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
-  onReset: PropTypes.func.isRequired
+  onReset: PropTypes.func.isRequired,
+  onOpenPoints: PropTypes.func.isRequired
 };
 
 function DecisionTrace({ result }) {
